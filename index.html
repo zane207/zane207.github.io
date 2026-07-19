@@ -71,6 +71,68 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-手动搭建GPIO函数库函数雏形" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2026/07/19/%E6%89%8B%E5%8A%A8%E6%90%AD%E5%BB%BAGPIO%E5%87%BD%E6%95%B0%E5%BA%93%E5%87%BD%E6%95%B0%E9%9B%8F%E5%BD%A2/" class="article-date">
+  <time class="dt-published" datetime="2026-07-19T14:02:14.000Z" itemprop="datePublished">2026-07-19</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>►<a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E8%AF%BE%E7%A8%8B%E6%80%BB%E7%BB%93/">课程总结</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2026/07/19/%E6%89%8B%E5%8A%A8%E6%90%AD%E5%BB%BAGPIO%E5%87%BD%E6%95%B0%E5%BA%93%E5%87%BD%E6%95%B0%E9%9B%8F%E5%BD%A2/">手动搭建GPIO函数库函数雏形</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>一：外设寄存器结构体定义<br>核心思想：<br>在之前的课程中，操作一个GPIO引脚需要记住基地址和偏移地址（如 0x40021400+0x00），这非常容易出错。这节课引入了编程学习中结构体（struct），将属于同一个外设（如GPIOF）的所有寄存器打包在一起。通过指针强转，我们可以用 -&gt; 语法直观地访问各个寄存器。</p>
+<p>关键代码：<br>&#x2F;&#x2F; 1. 定义GPIO外设的结构体，严格按照数据手册的寄存器顺序排列<br>typedef unsigened int       uint32_t;<br>typedef unsigened short int uint16_t;<br>typedef struct<br> {<br>    uint32_t MODER;    &#x2F;&#x2F; 模式寄存器 (偏移量: 0x00)<br>    uint32_t OTYPER;   &#x2F;&#x2F; 输出类型寄存器 (偏移量: 0x04)<br>    uint32_t OSPEEDR;  &#x2F;&#x2F; 输出速度寄存器 (偏移量: 0x08)<br>    uint32_t PUPDR;    &#x2F;&#x2F; 上下拉寄存器 (偏移量: 0x0C)<br>    uint32_t IDR;      &#x2F;&#x2F; 输入数据寄存器 (偏移量: 0x10)<br>    uint32_t ODR;      &#x2F;&#x2F; 输出数据寄存器 (偏移量: 0x14)<br>    uint16_t BSRRL&#x2F;H;     &#x2F;&#x2F; 置位&#x2F;复位寄存器 (偏移量: 0x18)<br>    uint32_t LCKR;     &#x2F;&#x2F; 配置锁定寄存器 (偏移量: 0x1C)<br>    uint32_t AFRL&#x2F;H;   &#x2F;&#x2F; 复用低&#x2F;高功能寄存器 (偏移量: 0x20, 0x24)<br>} GPIO_TypeDef;</p>
+<p>&#x2F;&#x2F; 2. 利用宏定义，将结构体指针绑定到具体的硬件基地址上<br>define GPIOF_BASE  (( unsigned  int )0x40021400)<br>define GPIOF       (GPIO_TypeDef *)GPIOF_BASE</p>
+<p>二：编写端口复位和置位函数<br>核心思想：<br>封装好结构体后，接下来把常用的操作（如点亮、熄灭LED）封装成函数。这样在 main.c 中调用时，代码的可读性会大幅提升，不再需要写冗长的位操作（&amp;&#x3D; ~ 或 |&#x3D;）。</p>
+<p>关键代码：<br>&#x2F;&#x2F; 置位函数（输出高电平）<br>void GPIO_SetBits(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)<br>{<br>    GPIOx-&gt;BSRRL &#x3D; GPIO_Pin;  &#x2F;&#x2F; 向低16位写1，对应引脚输出高电平<br>}</p>
+<p>&#x2F;&#x2F; 复位函数（输出低电平）<br>void GPIO_ResetBits(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)<br>{<br>    GPIOx-&gt;BSRRH &#x3D; GPIO_Pin;  &#x2F;&#x2F; 向高16位写1，对应引脚输出低电平<br>}<br>&#x2F;&#x2F; 在main函数中调用变得非常简洁：<br>&#x2F;&#x2F; GPIO_SetBits(GPIOF, GPIO_Pin_6);</p>
+<p>三：定义外设初始化结构体和编写外设初始化函数<br>核心思想：<br>为了避免初始化函数出现“参数爆炸”（即函数括号里需要传入十几个参数），引入了初始化配置结构体。将引脚、模式、速度等配置打包，通过指针一次性传给初始化函数。</p>
+<p>关键代码：<br>&#x2F;&#x2F; 1. 定义GPIO初始化配置结构体<br>typedef struct<br> {<br>    GPIOMode_TypeDef MODER;<br>    uint32_t 0TYPER;<br>    uint32_t 0SPEED;<br>    uint32_t PUPDR;<br>} GPIO_InitTypeDef;</p>
+<p>&#x2F;&#x2F; 2. 编写统一的初始化函数<br>void GPIO_Init(GPIO_TypeDef* GPIOx, GPIO_InitTypeDef* GPIO_InitStruct) {<br>    &#x2F;&#x2F; 开启对应GPIO端口的时钟（以GPIOF为例，实际操作需根据传入的GPIOx动态判断）<br>    RCC-&gt;AHB1ENR |&#x3D; RCC_AHB1ENR_GPIOFEN; </p>
+<pre><code>// 根据结构体中的配置，配置MODER、OSPEEDR、PUPDR等寄存器
+// 这里省略了具体的位运算逻辑，核心思想是通过指针读取结构体的值并写入寄存器
+GPIOx-&gt;MODER &amp;= ~(0x03 GPIO_Pin);
+GPIOx-&gt;MODER |= (GPIO_InitStruct-&gt;GPIO_Mode GPIO_Pin);
+// ... 其他寄存器的配置
+</code></pre>
+<p>}</p>
+<p>&#x2F;&#x2F; 3. 在main函数中的标准使用流程：<br>GPIO_InitTypeDef GPIO_InitStructure;<br>GPIO_InitStructure.GPIO_Pin &#x3D; GPIO_Pin_6;<br>GPIO_InitStructure.GPIO_Mode &#x3D; GPIO_Mode_OUT;<br>GPIO_InitStructure.GPIO_Speed &#x3D; GPIO_Speed_50MHz;<br>GPIO_InitStructure.GPIO_PuPd &#x3D; GPIO_PuPd_UP;<br>GPIO_Init(GPIOF, &amp;GPIO_InitStructure);</p>
+<p>总结:嵌入式软件架构的演进过程：绝对地址访问 -&gt; 结构体映射 -&gt; 函数封装 -&gt; 结构体传参</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2026/07/19/%E6%89%8B%E5%8A%A8%E6%90%AD%E5%BB%BAGPIO%E5%87%BD%E6%95%B0%E5%BA%93%E5%87%BD%E6%95%B0%E9%9B%8F%E5%BD%A2/" data-id="cuidKMpXT5Mak-_j_u2nF8Vi4" data-title="手动搭建GPIO函数库函数雏形" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
     <article id="post-C语言关于scanf和typedef的笔记" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
     <a href="/2026/07/19/C%E8%AF%AD%E8%A8%80%E5%85%B3%E4%BA%8Escanf%E5%92%8Ctypedef%E7%9A%84%E7%AC%94%E8%AE%B0/" class="article-date">
@@ -346,7 +408,7 @@ return 0;
   <div class="widget-wrap">
     <h3 class="widget-title">Categories</h3>
     <div class="widget">
-      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%BB%8B%E7%BB%8D/">介绍</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0/">编程学习</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0/C%E8%AF%AD%E8%A8%80%E5%9F%BA%E7%A1%80/">C语言基础</a></li></ul></li></ul>
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%BB%8B%E7%BB%8D/">介绍</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E8%AF%BE%E7%A8%8B%E6%80%BB%E7%BB%93/">课程总结</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0/">编程学习</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0/C%E8%AF%AD%E8%A8%80%E5%9F%BA%E7%A1%80/">C语言基础</a></li></ul></li></ul>
     </div>
   </div>
 
@@ -356,7 +418,7 @@ return 0;
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/scanf/" rel="tag">scanf</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/typedef/" rel="tag">typedef</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" rel="tag">结构体</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" rel="tag">编程入门</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" rel="tag">编程笔记</a></li></ul>
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/scanf/" rel="tag">scanf</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/typedef/" rel="tag">typedef</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" rel="tag">结构体</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" rel="tag">编程入门</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" rel="tag">编程笔记</a></li></ul>
     </div>
   </div>
 
@@ -366,7 +428,7 @@ return 0;
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/C%E8%AF%AD%E8%A8%80/" style="font-size: 20px;">C语言</a> <a href="/tags/scanf/" style="font-size: 10px;">scanf</a> <a href="/tags/typedef/" style="font-size: 10px;">typedef</a> <a href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" style="font-size: 10px;">结构体</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" style="font-size: 10px;">编程入门</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" style="font-size: 15px;">编程笔记</a>
+      <a href="/tags/C%E8%AF%AD%E8%A8%80/" style="font-size: 20px;">C语言</a> <a href="/tags/F407/" style="font-size: 10px;">F407</a> <a href="/tags/GPIO/" style="font-size: 10px;">GPIO</a> <a href="/tags/STM32/" style="font-size: 10px;">STM32</a> <a href="/tags/scanf/" style="font-size: 10px;">scanf</a> <a href="/tags/typedef/" style="font-size: 10px;">typedef</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 10px;">寄存器</a> <a href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" style="font-size: 10px;">库函数</a> <a href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" style="font-size: 10px;">结构体</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" style="font-size: 10px;">编程入门</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" style="font-size: 15px;">编程笔记</a>
     </div>
   </div>
 
@@ -386,6 +448,10 @@ return 0;
     <h3 class="widget-title">Recent Posts</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2026/07/19/%E6%89%8B%E5%8A%A8%E6%90%AD%E5%BB%BAGPIO%E5%87%BD%E6%95%B0%E5%BA%93%E5%87%BD%E6%95%B0%E9%9B%8F%E5%BD%A2/">手动搭建GPIO函数库函数雏形</a>
+          </li>
         
           <li>
             <a href="/2026/07/19/C%E8%AF%AD%E8%A8%80%E5%85%B3%E4%BA%8Escanf%E5%92%8Ctypedef%E7%9A%84%E7%AC%94%E8%AE%B0/">C语言关于scanf,typedef的笔记</a>
