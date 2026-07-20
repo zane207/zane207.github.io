@@ -71,6 +71,175 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-C语言运算知识" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2026/07/20/C%E8%AF%AD%E8%A8%80%E8%BF%90%E7%AE%97%E7%9F%A5%E8%AF%86/" class="article-date">
+  <time class="dt-published" datetime="2026-07-20T07:58:01.000Z" itemprop="datePublished">2026-07-20</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0/">编程学习</a>►<a class="article-category-link" href="/categories/%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0/C%E8%AF%AD%E8%A8%80%E5%9F%BA%E7%A1%80/">C语言基础</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2026/07/20/C%E8%AF%AD%E8%A8%80%E8%BF%90%E7%AE%97%E7%9F%A5%E8%AF%86/">C语言运算知识</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>一.原码，反码，补码<br>电脑&#x2F;单片机只认识二进制 0 和 1，数字分正数、负数，机器靠最高一位区分正负：<br>最高位&#x3D;0 → 正数<br>最高位&#x3D;1 → 负数<br>我们拿1字节（8位二进制）举例，好理解。</p>
+<ol>
+<li>原码：给人看得懂的写法<br>规则：<br>最高位符号位，后面正常写数字二进制。<br>举例8位：<br>+5：00000101 （0代表正数）<br>-5：10000101 （1代表负数）</li>
+</ol>
+<p>缺点：</p>
+<p> 0有两种写法：00000000（+0）、10000000（-0），重复浪费空间</p>
+<p> 计算机做减法巨麻烦，硬件不好计算，所以机器不用原码运算</p>
+<ol start="2">
+<li>反码：过渡产物，只为算补码用</li>
+</ol>
+<p>规则：<br>正数：反码 &#x3D; 原码（不变）<br>负数：符号位不动，剩下所有0变1、1变0</p>
+<p>还用8位举例：<br>+5 原码：00000101 → 反码不变：00000101<br>-5 原码：10000101 → 符号1不动，后面取反 → 11111010</p>
+<p>缺点：<br> 0还是有两个表示，依旧不能直接拿来做减法，只是中间步骤。<br> 3&#x3D;（-2）&#x3D; 00000011+11111101&#x3D;1 000000000（多一位）</p>
+<ol start="3">
+<li>补码：计算机真正存数字、算数字的格式（重点！）</li>
+</ol>
+<p>规则</p>
+<p>正数：补码 &#x3D; 原码 &#x3D; 反码，全程不变<br>负数：负数反码 + 1 &#x3D; 补码</p>
+<p>举例 -5<br>原码：10000101<br>反码：11111010<br>反码+1 → 补码：11111011</p>
+<p>为什么一定要用补码？两大好处</p>
+<p>解决0重复问题，8位二进制只有一个0：00000000</p>
+<p>减法直接变加法，单片机CPU不用单独造减法硬件，省钱简单<br>举个例子：计算 5 - 3 &#x3D; 5 + (-3)<br>5补码：00000101<br>-3补码：11111101<br>两者相加：00000010 也就是2，计算正确！</p>
+<p>极简记忆口诀</p>
+<p> 原码：人看的，正负分开写</p>
+<p> 反码：负数符号不动，其余全部翻转</p>
+<p> 补码：正数原样，负数反码加1；电脑存数字、算加减全靠它因此计算机内部用补码</p>
+<p> 大白话小白讲解：位运算 &amp; 6个位运算符</p>
+<p>二.位运算与位运算符<br>单片机、电脑里所有数字底层都是二进制0、1<br>位运算 &#x3D; 直接操作整数类型的二进制里每一个0和1，嵌入式写寄存器、控制引脚</p>
+<p>我们统一用8位二进制举例，方便看懂。</p>
+<p>位运算符有6个</p>
+<ol>
+<li>按位与 &amp; （符号：和）</li>
+</ol>
+<p>规则：两位同时为1，结果才是1；只要有一个0，结果就是0<br>口诀：全1才1，有0则0<br>例：3 &amp; 1<br>3二进制：00000011<br>1二进制：00000001<br>结果：00000001 &#x3D; 1<br>嵌入式用途：清零某一位、读取寄存器某一个引脚状态</p>
+<ol start="2">
+<li>按位或 | （符号：竖线）</li>
+</ol>
+<p>规则：任意一位是1，结果就是1；全0才是0<br>口诀：有1则1，全0才0<br>例：3 | 1<br>00000011 | 00000001 &#x3D; 00000011 &#x3D;3<br>嵌入式用途：把指定某一位置1（拉高引脚电平）</p>
+<ol start="3">
+<li>按位异或 ^</li>
+</ol>
+<p>规则：两位不一样&#x3D;1，两位相同&#x3D;0<br>口诀：相同出0，不同出1<br>例：3 ^ 1<br>00000011 ^ 00000001 &#x3D; 00000010 &#x3D;2<br>用途：翻转指定二进制位、简单加密、交换数字不用第三方变量</p>
+<ol start="4">
+<li>按位取反 ~ （单目运算符，只写在数字前面）</li>
+</ol>
+<p>规则：所有0变1，所有1变0，符号位也一起翻转<br>例：char a&#x3D;3（00000011）<br>~a 全部翻转 &#x3D; 11111100<br>重点：单片机char是有符号数，最高位1代表负数，取反后会变成负数。<br>用途：批量清零多位寄存器</p>
+<ol start="5">
+<li>按位左移 &lt;&lt;</li>
+</ol>
+<p>格式：数字 &lt;&lt; 移动位数<br>规则：二进制整体往左挤，右边空出来补0，左边挤出去的数字直接丢掉<br>例：1 &lt;&lt; 2<br>1：00000001<br>左移2位：00000100 等于4<br>隐藏技巧：左移n位 &#x3D; 数字 × 2的n次方</p>
+<ol start="6">
+<li>按位右移 &gt;&gt;</li>
+</ol>
+<p>格式：数字 &gt;&gt; 移动位数<br>分两种情况：</p>
+<ol>
+<li><p>正数：整体右挤，左边补0</p>
+</li>
+<li><p>负数（补码存储）：整体右挤，左边补1<br>例：4 &gt;&gt; 1<br>4：00000100 → 右移1位 00000010 &#x3D;2<br>—4 &gt;&gt; 1<br>—4：11111100 → 右移1位 11111110 &#x3D;—2<br>隐藏技巧：右移n位 &#x3D; 数字 ÷ 2的n次方（取整数）</p>
+</li>
+</ol>
+<p>嵌入式最常用组合操作（写寄存器必用）</p>
+<ol>
+<li><p>某一位置1：a |&#x3D; (1&lt;&lt;n)</p>
+</li>
+<li><p>某一位清零：a &amp;&#x3D; ~(1&lt;&lt;n)</p>
+</li>
+<li><p>翻转某一位：a ^&#x3D; (1&lt;&lt;n)</p>
+</li>
+</ol>
+<p>超简记忆总结</p>
+<ol>
+<li><p>&amp; 留1清0；| 统一置1；^ 相同归零</p>
+</li>
+<li><p>~ 全部翻转；&lt;&lt; 左移翻倍；&gt;&gt; 右移减半</p>
+</li>
+<li><p>单片机控制引脚、配置寄存器全部靠位运算，不会改动其他引脚，精准控制单独某一位</p>
+</li>
+</ol>
+<p>三.复合赋值运算符</p>
+<p>普通写法：a &#x3D; a + 数字<br>意思是：拿a本身的值，加上一个数，算完之后，结果重新存回a里面。<br>复合赋值就是把这行代码简写，少敲重复的a，写单片机代码经常用。<br>复合赋值运算符:将运算和赋值合并为一步的简写方式<br>逐个讲常用6种，配简单例子</p>
+<p>我们统一设初始值：int a &#x3D; 5;</p>
+<ol>
+<li>加法复合 +&#x3D;</li>
+</ol>
+<p>简写 a +&#x3D; 3 等价完整写法 a &#x3D; a + 3<br>计算：5+3&#x3D;8，最后a&#x3D;8</p>
+<ol start="2">
+<li>减法复合 -&#x3D;</li>
+</ol>
+<p>简写 a -&#x3D; 2 等价 a &#x3D; a - 2<br>初始a&#x3D;5，5-2&#x3D;3，最后a&#x3D;3</p>
+<ol start="3">
+<li>乘法复合 *&#x3D;</li>
+</ol>
+<p>简写 a <em>&#x3D; 4 等价 a &#x3D; a * 4<br>5</em>4&#x3D;20，a变成20</p>
+<ol start="4">
+<li>除法复合 &#x2F;&#x3D;</li>
+</ol>
+<p>简写 a &#x2F;&#x3D; 2 等价 a &#x3D; a &#x2F; 2<br>5÷2&#x3D;2（整数只留整数部分），a&#x3D;2</p>
+<ol start="5">
+<li>取余复合 %&#x3D;</li>
+</ol>
+<p>简写 a %&#x3D; 2 等价 a &#x3D; a % 2<br>5除以2余1，a&#x3D;1</p>
+<ol start="6">
+<li><p>位运算复合（单片机写寄存器天天用！重点）</p>
+</li>
+<li><p>a |&#x3D; (1&lt;&lt;2) 等价 a &#x3D; a | (1&lt;&lt;2) 单独把第2位置1</p>
+</li>
+<li><p>a &amp;&#x3D; ~(1&lt;&lt;3) 等价 a &#x3D; a &amp; ~(1&lt;&lt;3) 单独把第3位清零</p>
+</li>
+<li><p>a ^&#x3D; (1&lt;&lt;1) 等价 a &#x3D; a ^ (1&lt;&lt;1) 翻转第1位电平</p>
+</li>
+<li><p>a &lt;&lt;&#x3D; 1 等价 a &#x3D; a &lt;&lt; 1 左移一位翻倍</p>
+</li>
+<li><p>a &gt;&gt;&#x3D; 1 等价 a &#x3D; a &gt;&gt; 1 右移一位除以2</p>
+</li>
+</ol>
+<p>核心记忆口诀</p>
+<p>符号&#x3D; 等于 自己 符号 数字<br>举个万能模板：a OP&#x3D; b ↔ a &#x3D; a OP b<br>OP就是 + - * &#x2F; % &amp; | ^ &lt;&lt; &gt;&gt; 任意运算符</p>
+<p>易错点</p>
+<ol>
+<li><p>复合运算符中间不能加空格，不能写成 a + &#x3D; 3，正确 a +&#x3D;3</p>
+</li>
+<li><p>等号永远在运算符右边，顺序别写反，没有 &#x3D;+ 这种写法！</p>
+</li>
+</ol>
+<p>嵌入式实用例子（控制引脚）<br>unsigned int GPIOA &#x3D; 0;<br>GPIOA |&#x3D; (1&lt;&lt;15);   &#x2F;&#x2F; PA15引脚置高<br>GPIOA &amp;&#x3D; ~(1&lt;&lt;15);  &#x2F;&#x2F; PA15引脚清零<br>用复合写法代码更短，是写STM32寄存器标准写法。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2026/07/20/C%E8%AF%AD%E8%A8%80%E8%BF%90%E7%AE%97%E7%9F%A5%E8%AF%86/" data-id="cuidXpQB37QQPZyc6jjg-5EJm" data-title="C语言运算知识" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">位运算与位运算符</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" rel="tag">原码·反码·补码</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">复合赋值运算符</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" rel="tag">编程入门</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
     <article id="post-手动搭建GPIO函数库函数雏形" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
     <a href="/2026/07/19/%E6%89%8B%E5%8A%A8%E6%90%AD%E5%BB%BAGPIO%E5%87%BD%E6%95%B0%E5%BA%93%E5%87%BD%E6%95%B0%E9%9B%8F%E5%BD%A2/" class="article-date">
@@ -418,7 +587,7 @@ return 0;
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/scanf/" rel="tag">scanf</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/typedef/" rel="tag">typedef</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" rel="tag">结构体</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" rel="tag">编程入门</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" rel="tag">编程笔记</a></li></ul>
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/scanf/" rel="tag">scanf</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/typedef/" rel="tag">typedef</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">位运算与位运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" rel="tag">原码·反码·补码</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">复合赋值运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" rel="tag">结构体</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" rel="tag">编程入门</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" rel="tag">编程笔记</a></li></ul>
     </div>
   </div>
 
@@ -428,7 +597,7 @@ return 0;
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/C%E8%AF%AD%E8%A8%80/" style="font-size: 20px;">C语言</a> <a href="/tags/F407/" style="font-size: 10px;">F407</a> <a href="/tags/GPIO/" style="font-size: 10px;">GPIO</a> <a href="/tags/STM32/" style="font-size: 10px;">STM32</a> <a href="/tags/scanf/" style="font-size: 10px;">scanf</a> <a href="/tags/typedef/" style="font-size: 10px;">typedef</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 10px;">寄存器</a> <a href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" style="font-size: 10px;">库函数</a> <a href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" style="font-size: 10px;">结构体</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" style="font-size: 10px;">编程入门</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" style="font-size: 15px;">编程笔记</a>
+      <a href="/tags/C%E8%AF%AD%E8%A8%80/" style="font-size: 20px;">C语言</a> <a href="/tags/F407/" style="font-size: 10px;">F407</a> <a href="/tags/GPIO/" style="font-size: 10px;">GPIO</a> <a href="/tags/STM32/" style="font-size: 10px;">STM32</a> <a href="/tags/scanf/" style="font-size: 10px;">scanf</a> <a href="/tags/typedef/" style="font-size: 10px;">typedef</a> <a href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">位运算与位运算符</a> <a href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" style="font-size: 10px;">原码·反码·补码</a> <a href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">复合赋值运算符</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 10px;">寄存器</a> <a href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" style="font-size: 10px;">库函数</a> <a href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" style="font-size: 10px;">结构体</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" style="font-size: 15px;">编程入门</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" style="font-size: 15px;">编程笔记</a>
     </div>
   </div>
 
@@ -450,6 +619,10 @@ return 0;
       <ul>
         
           <li>
+            <a href="/2026/07/20/C%E8%AF%AD%E8%A8%80%E8%BF%90%E7%AE%97%E7%9F%A5%E8%AF%86/">C语言运算知识</a>
+          </li>
+        
+          <li>
             <a href="/2026/07/19/%E6%89%8B%E5%8A%A8%E6%90%AD%E5%BB%BAGPIO%E5%87%BD%E6%95%B0%E5%BA%93%E5%87%BD%E6%95%B0%E9%9B%8F%E5%BD%A2/">手动搭建GPIO函数库函数雏形</a>
           </li>
         
@@ -463,10 +636,6 @@ return 0;
         
           <li>
             <a href="/2026/07/18/chenge-first-blog/">change-first-blog</a>
-          </li>
-        
-          <li>
-            <a href="/2026/07/18/hello-world/">Hello World</a>
           </li>
         
       </ul>
