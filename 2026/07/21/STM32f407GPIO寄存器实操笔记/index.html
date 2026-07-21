@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>STM32f407GPIO寄存器实操笔记 | Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="第一1、片上外设基地址ST生产STM32的时候，给芯片里面所有外设安排独一无二的地址，就像每家的门牌号。所有外设统一从 0x40000000 开始，这个把它取为：PERIPH_BASE#define PERIPH_BASE          ((unsigned int)0x40000000)理解：整个小区大门地址：0x400000002、区分不同总线：AHB1总线偏移芯片内部有好几条“（总线）”">
+<meta property="og:type" content="article">
+<meta property="og:title" content="STM32f407GPIO寄存器实操笔记">
+<meta property="og:url" content="http://example.com/2026/07/21/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B0/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="第一1、片上外设基地址ST生产STM32的时候，给芯片里面所有外设安排独一无二的地址，就像每家的门牌号。所有外设统一从 0x40000000 开始，这个把它取为：PERIPH_BASE#define PERIPH_BASE          ((unsigned int)0x40000000)理解：整个小区大门地址：0x400000002、区分不同总线：AHB1总线偏移芯片内部有好几条“（总线）”">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2026-07-21T10:00:00.000Z">
+<meta property="article:modified_time" content="2026-07-21T12:09:12.149Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="C语言">
+<meta property="article:tag" content="F407">
+<meta property="article:tag" content="GPIO">
+<meta property="article:tag" content="STM32">
+<meta property="article:tag" content="寄存器">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css">
+
+<meta name="generator" content="Hexo 8.1.2"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS Feed"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="Search"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://example.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-STM32f407GPIO寄存器实操笔记" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2026/07/21/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B0/" class="article-date">
+  <time class="dt-published" datetime="2026-07-21T10:00:00.000Z" itemprop="datePublished">2026-07-21</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      STM32f407GPIO寄存器实操笔记
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>第一<br>1、片上外设基地址<br>ST生产STM32的时候，给芯片里面所有外设安排独一无二的地址，就像每家的门牌号。<br>所有外设统一从 0x40000000 开始，这个把它取为：PERIPH_BASE<br>#define PERIPH_BASE          ((unsigned int)0x40000000)<br>理解：整个小区大门地址：0x40000000<br>2、区分不同总线：AHB1总线偏移<br>芯片内部有好几条“（总线）”<br>GPIOA&#x2F;GPIOB&#x2F;GPIOF全部跑在 AHB1<br>厂家规定：AHB1 &#x3D; PERIPH_BASE + 0x20000<br>#define AHB1PERIPH_BASE       (PERIPH_BASE + 0x00020000)	<br>理解：AHB1这条街道入口 &#x3D; 大门往里走0x20000<br>3、GPIOA的门牌号<br>GPIOA就在AHB1街道最开头，偏移0，所以：<br>#define GPIOA_BASE         (AHB1PERIPH_BASE + 0x0000)<br>GPIOF是 AHB1PERIPH_BASE + 0x1400，相当于同一条街往后走一段距离。<br>4、GPIOA里面一堆寄存器，靠【偏移量】区分<br>找到GPIOA大门（GPIOA_BASE）之后，门里面有一排连续房间，每个房间对应一个寄存器：<br>厂家手册固定死偏移：<br>• MODER 模式寄存器：进门第0间 → +0x00<br>• OTYPER 输出类型：第1间 → +0x04<br>• OSPEEDR速度寄存器：+0x08<br>• PUPDR上下拉：+0x0C<br>• IDR输入寄存器：+0x10<br>• ODR输出寄存器：+0x14<br>• BSRR置位&#x2F;复位寄存器：+0x18<br>代码里这句含义：<br>#define GPIOA_MODER	<em>(unsigned int</em>)(GPIOA_BASE+0x00)</p>
+<ol>
+<li>GPIOA_BASE+0x00：算出MODER房间地址</li>
+<li>(unsigned int *)：把数字强行变成地址指针</li>
+<li>最前面*：代表去这个地址里面读写数据</li>
+</ol>
+<p>第二：2*5、1&lt;&lt;5 这些数字怎么来（PA5引脚）<br>每个引脚都分配固定的bit位置<br> 1.MODER、OSPEEDR、PUPDR：每个引脚占用 2个bit！！重点！<br>PA0 → bit0、bit1<br>PA1 → bit2、bit3<br>PA2 → bit4、bit5<br>……<br>PA5 → bit10、bit11<br>计算公式：引脚编号 × 2<br>PA5：5 * 2 &#x3D;10，从第10位开始占用两位<br>GPIOA_MODER &amp;&#x3D; ~((unsigned int)0x3 &lt;&lt; (2 * 5));<br>0x3 &#x3D; 二进制11，代表连续两个1；向左移10位，刚好对准PA5的两个bit。</p>
+<p> 2.OTYPER、BSRR、IDR、ODR：每个引脚只占用 1个bit<br>PA5就只用第5号位，不用乘2<br>GPIOA_OTYPER &amp;&#x3D; ~(0x1 &lt;&lt; 5);<br>GPIOA_BSRR |&#x3D; (1 &lt;&lt; 5);<br>1 &lt;&lt; 5 &#x3D; 二进制 100000，第5位是1，精准选中PA5</p>
+<p> 3.BSRR特殊规则（一定要记住）<br>• 低16位（bit0<del>15）写1 → 引脚变高电平<br>• 高16位（bit16</del>31）写1 → 引脚变低电平<br>PA5拉低写法：1 &lt;&lt; (16+5)</p>
+<p>第三点：函数里每一步的逻辑通俗解释<br>RCC_AHB1ENR |&#x3D; (1 &lt;&lt; 0);<br>RCC是时钟总开关。GPIOA挂在AHB1第0位。<br>&#x3D; 给GPIOA“通电”，不通电寄存器全部失灵，相当于设备没插电。<br>GPIOA_PUPDR |&#x3D; ((unsigned int)0x01 &lt;&lt; (2 * 5));<br>01&#x3D;内部上拉。PA5上电默认被内部电阻拉到3.3V；<br>如果你不想上下拉，就只写清零那一行，不要加这一句。<br>PA5 普通引脚：随便配置，不用额外代码<br>PA13 PA14 PA15：出厂默认分给下载器JTAG，就算地址代码写对，硬件会抢控制权，必须SYSCFG解除占用，PA5没有这个麻烦！<br>极简记忆口诀</p>
+<ol>
+<li>地址：大门基地址 + 寄存器固定偏移</li>
+<li>2bit寄存器(MODER&#x2F;速度&#x2F;上下拉)：移位 &#x3D; 引脚×2</li>
+<li>1bit寄存器(OTYPER&#x2F;BSRR)：直接 1 &lt;&lt; 引脚号</li>
+<li>第一步永远先开时钟！不开时钟一切配置白费<br>整体代码：<br>&#x2F;*片上外设基地址  *&#x2F;</li>
+</ol>
+<p>#define PERIPH_BASE           ((unsigned int)0x40000000)                          </p>
+<p>&#x2F;*总线基地址 *&#x2F;<br>#define AHB1PERIPH_BASE       (PERIPH_BASE + 0x00020000)	</p>
+<p>&#x2F;<em>GPIO外设基地址</em>&#x2F;<br>#define GPIOF_BASE            (AHB1PERIPH_BASE + 0x1400)<br>&#x2F;<em>GPIO外设基地址</em>&#x2F;<br>#define GPIOA_BASE         (AHB1PERIPH_BASE + 0x0000)<br>例GPIOA<br>#define GPIOA_MODER	       <em>(unsigned int</em>)(GPIOA_BASE+0x00)<br>#define GPIOA_OTYPER       <em>(unsigned int</em>)(GPIOA_BASE+0x04)<br>#define GPIOA_OSPEEDR      <em>(unsigned int</em>)(GPIOA_BASE+0x08)<br>#define GPIOA_PUPDR        <em>(unsigned int</em>)(GPIOA_BASE+0x0C)<br>#define GPIOA_IDR          <em>(unsigned int</em>)(GPIOA_BASE+0x10)<br>#define GPIOA_ODR          <em>(unsigned int</em>)(GPIOA_BASE+0x14)<br>#define GPIOA_BSRR         <em>(unsigned int</em>)(GPIOA_BASE+0x18)<br>#define GPIOA_LCKR         <em>(unsigned int</em>)(GPIOA_BASE+0x1C)<br>#define GPIOA_AFRL         <em>(unsigned int</em>)(GPIOA_BASE+0x20)<br>#define GPIOA_AFRH         <em>(unsigned int</em>)(GPIOA_BASE+0x24)<br>以上可视为函数库</p>
+<p>写寄存器代码的前提 第1行：RCC_AHB1ENR |&#x3D; (1 &lt;&lt; 0);<br>课本知识没有写，但一切GPIO的前提<br>GPIO相当于电器，时钟&#x3D;电源。不开时钟，后面所有寄存器全部失效。<br>GPIOA在AHB1时钟寄存器第0位，写1&#x3D;通电。</p>
+<p>第四. GPIOA_MODER（模式寄存器）<br>理论规则：<br>MODERy[1:0]<br>00：输入（上电默认）<br>01：通用输出<br>10：复用功能<br>11：模拟输入<br>代码：<br>GPIOA_MODER &amp;&#x3D; ~((unsigned int)0x3 &lt;&lt; (2 * 5));<br>GPIOA_MODER |&#x3D; ((unsigned int)0x1 &lt;&lt; (2 * 5));  </p>
+<ol>
+<li>PA5，y&#x3D;5；MODER每个引脚占用2位 → 移位 2*5&#x3D;10</li>
+<li>0x3 &#x3D; 二进制 11<br>&amp;&#x3D; ~(0x3 &lt;&lt;10)：先把PA5对应的两位清0，清除上电默认配置</li>
+<li>0x1 &#x3D; 二进制 01，写入进去<br>最终效果：PA5 设置【通用输出模式】</li>
+</ol>
+<p>第五. GPIOA_OTYPER（输出类型寄存器）<br>理论规则：<br>0：推挽输出（复位默认）<br>1：开漏输出<br>代码：<br>GPIOA_OTYPER &amp;&#x3D; ~(0x1 &lt;&lt; 5);<br>OTYPER每个引脚只占1个位，直接1&lt;&lt;引脚号<br>~(1&lt;&lt;5) 把第5位清0<br>PA5配置成【推挽输出】<br>推挽：能主动输出3.3V高电平、0V低电平，最常用驱动LED</p>
+<p>第六. GPIOA_OSPEEDR（输出速度寄存器）<br>理论规则：<br>00：2MHz<br>01：25MHz<br>10：50MHz<br>11：100MHz<br>代码：<br>GPIOA_OSPEEDR &amp;&#x3D; ~((unsigned int)0x03 &lt;&lt; (2 * 5));<br>GPIOA_OSPEEDR |&#x3D; ((unsigned int)0x00 &lt;&lt; (2 * 5));<br>OSPEEDR和MODER一样，每个引脚2位，移位 &#x3D; 引脚×2<br>先清零两位，再写入00<br> PA5 最大速度 2MHz（低速）<br>日常点灯用低速足够，省电、噪声小</p>
+<p>第七. GPIOA_PUPDR（上下拉寄存器）<br>理论规则：<br>00：无上下拉<br>01：上拉<br>10：下拉<br>11：保留<br>代码：<br>GPIOA_PUPDR &amp;&#x3D; ~((unsigned int)0x03 &lt;&lt; (2 * 5));<br>GPIOA_PUPDR |&#x3D; ((unsigned int)0x01 &lt;&lt; (2 * 5));<br>PUPDR依旧是每个引脚占用2位<br>先清零，写入二进制01<br> PA5开启【内部上拉电阻】<br>小提醒：输出模式开上拉一般很少用，输入模式用得多。如果只是驱动LED，可以删掉这一行，改成只清零 GPIOA_PUPDR &amp;&#x3D; ~((unsigned int)0x03 &lt;&lt; (2 * 5)); 设置成无上下拉</p>
+<p>第八. GPIOA_BSRR（置位&#x2F;复位寄存器）<br>理论规则：<br>BSRR低16位 BSy：写1 → 引脚置高电平<br>BSRR高16位 BRy：写1 → 引脚置低电平<br>代码：<br>GPIOA_BSRR |&#x3D; (1 &lt;&lt; 5);<br>1&lt;&lt;5，对应BS5位写1<br> PA5立即输出高电平（3.3V）</p>
+<p>如果想要拉低，写法：<br>GPIOA_BSRR |&#x3D; (1U &lt;&lt; (16 + 5));<br>重点区分 BSRR 和 ODR</p>
+<p>BSRR 优势：只修改指定引脚，不会影响其他IO，强烈推荐；<br>不要直接写 GPIOA_ODR，多任务下容易冲突。<br>整体总结：这段代码最终配置结果</p>
+<p>PA5：通用推挽输出、2MHz低速、内部上拉、上电直接输出高电平</p>
+<p>万能公式<br>MODER &#x2F; OSPEEDR &#x2F; PUPDR（2位寄存器）<br>寄存器 &amp;&#x3D; ~(0x3 &lt;&lt; (2 * 引脚号)); &#x2F;&#x2F;清空<br>寄存器 |&#x3D; (值 &lt;&lt; (2 * 引脚号));    &#x2F;&#x2F;写入配置<br>OTYPER &#x2F; BSRR &#x2F; IDR &#x2F; ODR（1位寄存器）<br>寄存器 &amp;&#x3D; ~(1 &lt;&lt; 引脚号);<br>寄存器 |&#x3D; (1 &lt;&lt; 引脚号);</p>
+<p>易错点<br>PA13、PA14、PA15：硬件默认JTAG调试功能<br>MODER配置会被硬件强行覆盖，就算代码写的一模一样，引脚不受控制，必须用SYSCFG解除复用<br>PA5&#x2F;PA0~PA12：普通引脚，直接这套代码就能正常运行，没有额外限制</p>
+<p>整体代码：<br>void PA5_Init_F407_Reg(void)<br>{<br>    &#x2F;* 1. 开启 GPIOA 时钟 (AHB1ENR 的第 0 位) *&#x2F;<br>    RCC_AHB1ENR |&#x3D; (1 &lt;&lt; 0);	</p>
+<pre><code>/* 2. MODER寄存器 配置PA5 */
+GPIOA_MODER &amp;= ~((unsigned int)0x3 &lt;&lt; (2 * 5)); 
+GPIOA_MODER |= ((unsigned int)0x1 &lt;&lt; (2 * 5));  
+
+/* 3. OTYPER 输出类型 */
+GPIOA_OTYPER &amp;= ~(0x1 &lt;&lt; 5); 
+
+/* 4. OSPEEDR 输出速度 */
+GPIOA_OSPEEDR &amp;= ~((unsigned int)0x03 &lt;&lt; (2 * 5));
+GPIOA_OSPEEDR |= ((unsigned int)0x00 &lt;&lt; (2 * 5)); 
+
+/* 5. PUPDR 上下拉配置 */
+GPIOA_PUPDR &amp;= ~((unsigned int)0x03 &lt;&lt; (2 * 5));
+GPIOA_PUPDR |= ((unsigned int)0x01 &lt;&lt; (2 * 5));   
+
+/* 6. BSRR 设置PA5输出高电平 */
+GPIOA_BSRR |= (1 &lt;&lt; 5);
+
+while(1);
+</code></pre>
+<p>}</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2026/07/21/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B0/" data-id="cuid3_OS3e1VecMqZyJmQmjrp" data-title="STM32f407GPIO寄存器实操笔记" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2026/07/20/C%E8%AF%AD%E8%A8%80%E8%BF%90%E7%AE%97%E7%9F%A5%E8%AF%86/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">C语言运算知识</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Categories</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%BB%8B%E7%BB%8D/">介绍</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E8%AF%BE%E7%A8%8B%E6%80%BB%E7%BB%93/">课程总结</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0/">编程学习</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0/C%E8%AF%AD%E8%A8%80%E5%9F%BA%E7%A1%80/">C语言基础</a></li></ul></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/scanf/" rel="tag">scanf</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/typedef/" rel="tag">typedef</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">位运算与位运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" rel="tag">原码·反码·补码</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">复合赋值运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" rel="tag">结构体</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" rel="tag">编程入门</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" rel="tag">编程笔记</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/C%E8%AF%AD%E8%A8%80/" style="font-size: 20px;">C语言</a> <a href="/tags/F407/" style="font-size: 15px;">F407</a> <a href="/tags/GPIO/" style="font-size: 15px;">GPIO</a> <a href="/tags/STM32/" style="font-size: 15px;">STM32</a> <a href="/tags/scanf/" style="font-size: 10px;">scanf</a> <a href="/tags/typedef/" style="font-size: 10px;">typedef</a> <a href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">位运算与位运算符</a> <a href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" style="font-size: 10px;">原码·反码·补码</a> <a href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">复合赋值运算符</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 15px;">寄存器</a> <a href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" style="font-size: 10px;">库函数</a> <a href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" style="font-size: 10px;">结构体</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" style="font-size: 15px;">编程入门</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" style="font-size: 15px;">编程笔记</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2026/07/">July 2026</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2026/07/21/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B0/">STM32f407GPIO寄存器实操笔记</a>
+          </li>
+        
+          <li>
+            <a href="/2026/07/20/C%E8%AF%AD%E8%A8%80%E8%BF%90%E7%AE%97%E7%9F%A5%E8%AF%86/">C语言运算知识</a>
+          </li>
+        
+          <li>
+            <a href="/2026/07/19/%E6%89%8B%E5%8A%A8%E6%90%AD%E5%BB%BAGPIO%E5%87%BD%E6%95%B0%E5%BA%93%E5%87%BD%E6%95%B0%E9%9B%8F%E5%BD%A2/">手动搭建GPIO函数库函数雏形</a>
+          </li>
+        
+          <li>
+            <a href="/2026/07/19/C%E8%AF%AD%E8%A8%80%E5%85%B3%E4%BA%8Escanf%E5%92%8Ctypedef%E7%9A%84%E7%AC%94%E8%AE%B0/">C语言关于scanf,typedef的笔记</a>
+          </li>
+        
+          <li>
+            <a href="/2026/07/18/C%E8%AF%AD%E8%A8%80%E7%BB%93%E6%9E%84%E4%BD%93%E7%AC%94%E8%AE%B0/">C语言结构体笔记</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2026 John Doe<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>
