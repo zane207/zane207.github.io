@@ -4,17 +4,17 @@
   <meta charset="utf-8">
   
   
-  <title>手动搭建GPIO函数库函数雏形.1 | Hexo</title>
+  <title>手动搭建GPIO函数库函数雏形.2 | Hexo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta name="description" content="一：外设寄存器结构体定义核心思想：在之前的课程中，操作一个GPIO引脚需要记住基地址和偏移地址（如 0x40021400+0x00），这非常容易出错。这节课引入了编程学习中结构体（struct），将属于同一个外设（如GPIOF）的所有寄存器打包在一起。通过指针强转，我们可以用 -&gt; 语法直观地访问各个寄存器。 关键代码：&#x2F;&#x2F; 1. 定义GPIO外设的结构体，严格按照数据手">
+  <meta name="description" content="这次做寄存器映射中的结构体映射结构体映射要从：1.定义基础类型2.建立结构体映射3.用指针配合结构体4.使用 BSRR 寄存器来拉高&#x2F;拉低电平 一、 为什么要定义基础类型（typedef）？代码片段：typedef unsigned char  uint8_t;typedef unsigned int   uint32_t;原因：跨平台与硬件的“绝对对齐”  C语言的“不严谨”：在标准">
 <meta property="og:type" content="article">
-<meta property="og:title" content="手动搭建GPIO函数库函数雏形.1">
-<meta property="og:url" content="http://example.com/2026/07/19/%E6%89%8B%E5%8A%A8%E6%90%AD%E5%BB%BAGPIO%E5%87%BD%E6%95%B0%E5%BA%93%E5%87%BD%E6%95%B0%E9%9B%8F%E5%BD%A2/index.html">
+<meta property="og:title" content="手动搭建GPIO函数库函数雏形.2">
+<meta property="og:url" content="http://example.com/2026/07/22/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B02/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:description" content="一：外设寄存器结构体定义核心思想：在之前的课程中，操作一个GPIO引脚需要记住基地址和偏移地址（如 0x40021400+0x00），这非常容易出错。这节课引入了编程学习中结构体（struct），将属于同一个外设（如GPIOF）的所有寄存器打包在一起。通过指针强转，我们可以用 -&gt; 语法直观地访问各个寄存器。 关键代码：&#x2F;&#x2F; 1. 定义GPIO外设的结构体，严格按照数据手">
+<meta property="og:description" content="这次做寄存器映射中的结构体映射结构体映射要从：1.定义基础类型2.建立结构体映射3.用指针配合结构体4.使用 BSRR 寄存器来拉高&#x2F;拉低电平 一、 为什么要定义基础类型（typedef）？代码片段：typedef unsigned char  uint8_t;typedef unsigned int   uint32_t;原因：跨平台与硬件的“绝对对齐”  C语言的“不严谨”：在标准">
 <meta property="og:locale" content="en_US">
-<meta property="article:published_time" content="2026-07-19T14:02:14.000Z">
-<meta property="article:modified_time" content="2026-07-22T06:12:30.584Z">
+<meta property="article:published_time" content="2026-07-22T06:14:06.000Z">
+<meta property="article:modified_time" content="2026-07-22T06:35:35.422Z">
 <meta property="article:author" content="John Doe">
 <meta property="article:tag" content="F407">
 <meta property="article:tag" content="GPIO">
@@ -78,10 +78,10 @@
 </header>
 
       <div class="outer">
-        <section id="main"><article id="post-手动搭建GPIO函数库函数雏形" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+        <section id="main"><article id="post-STM32f407GPIO寄存器实操笔记2" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
-    <a href="/2026/07/19/%E6%89%8B%E5%8A%A8%E6%90%AD%E5%BB%BAGPIO%E5%87%BD%E6%95%B0%E5%BA%93%E5%87%BD%E6%95%B0%E9%9B%8F%E5%BD%A2/" class="article-date">
-  <time class="dt-published" datetime="2026-07-19T14:02:14.000Z" itemprop="datePublished">2026-07-19</time>
+    <a href="/2026/07/22/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B02/" class="article-date">
+  <time class="dt-published" datetime="2026-07-22T06:14:06.000Z" itemprop="datePublished">2026-07-22</time>
 </a>
     
   <div class="article-category">
@@ -96,7 +96,7 @@
         
   
     <h1 class="p-name article-title" itemprop="headline name">
-      手动搭建GPIO函数库函数雏形.1
+      手动搭建GPIO函数库函数雏形.2
     </h1>
   
 
@@ -104,29 +104,91 @@
     
     <div class="e-content article-entry" itemprop="articleBody">
       
-        <p>一：外设寄存器结构体定义<br>核心思想：<br>在之前的课程中，操作一个GPIO引脚需要记住基地址和偏移地址（如 0x40021400+0x00），这非常容易出错。这节课引入了编程学习中结构体（struct），将属于同一个外设（如GPIOF）的所有寄存器打包在一起。通过指针强转，我们可以用 -&gt; 语法直观地访问各个寄存器。</p>
-<p>关键代码：<br>&#x2F;&#x2F; 1. 定义GPIO外设的结构体，严格按照数据手册的寄存器顺序排列<br>typedef unsigened int       uint32_t;<br>typedef unsigened short int uint16_t;<br>typedef struct<br> {<br>    uint32_t MODER;    &#x2F;&#x2F; 模式寄存器 (偏移量: 0x00)<br>    uint32_t OTYPER;   &#x2F;&#x2F; 输出类型寄存器 (偏移量: 0x04)<br>    uint32_t OSPEEDR;  &#x2F;&#x2F; 输出速度寄存器 (偏移量: 0x08)<br>    uint32_t PUPDR;    &#x2F;&#x2F; 上下拉寄存器 (偏移量: 0x0C)<br>    uint32_t IDR;      &#x2F;&#x2F; 输入数据寄存器 (偏移量: 0x10)<br>    uint32_t ODR;      &#x2F;&#x2F; 输出数据寄存器 (偏移量: 0x14)<br>    uint16_t BSRRL&#x2F;H;     &#x2F;&#x2F; 置位&#x2F;复位寄存器 (偏移量: 0x18)<br>    uint32_t LCKR;     &#x2F;&#x2F; 配置锁定寄存器 (偏移量: 0x1C)<br>    uint32_t AFRL&#x2F;H;   &#x2F;&#x2F; 复用低&#x2F;高功能寄存器 (偏移量: 0x20, 0x24)<br>} GPIO_TypeDef;</p>
-<p>&#x2F;&#x2F; 2. 利用宏定义，将结构体指针绑定到具体的硬件基地址上<br>define GPIOF_BASE  (( unsigned  int )0x40021400)<br>define GPIOF       (GPIO_TypeDef *)GPIOF_BASE</p>
-<p>二：编写端口复位和置位函数<br>核心思想：<br>封装好结构体后，接下来把常用的操作（如点亮、熄灭LED）封装成函数。这样在 main.c 中调用时，代码的可读性会大幅提升，不再需要写冗长的位操作（&amp;&#x3D; ~ 或 |&#x3D;）。</p>
-<p>关键代码：<br>&#x2F;&#x2F; 置位函数（输出高电平）<br>void GPIO_SetBits(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)<br>{<br>    GPIOx-&gt;BSRRL &#x3D; GPIO_Pin;  &#x2F;&#x2F; 向低16位写1，对应引脚输出高电平<br>}</p>
-<p>&#x2F;&#x2F; 复位函数（输出低电平）<br>void GPIO_ResetBits(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)<br>{<br>    GPIOx-&gt;BSRRH &#x3D; GPIO_Pin;  &#x2F;&#x2F; 向高16位写1，对应引脚输出低电平<br>}<br>&#x2F;&#x2F; 在main函数中调用变得非常简洁：<br>&#x2F;&#x2F; GPIO_SetBits(GPIOF, GPIO_Pin_6);</p>
-<p>三：定义外设初始化结构体和编写外设初始化函数<br>核心思想：<br>为了避免初始化函数出现“参数爆炸”（即函数括号里需要传入十几个参数），引入了初始化配置结构体。将引脚、模式、速度等配置打包，通过指针一次性传给初始化函数。</p>
-<p>关键代码：<br>&#x2F;&#x2F; 1. 定义GPIO初始化配置结构体<br>typedef struct<br> {<br>    GPIOMode_TypeDef MODER;<br>    uint32_t 0TYPER;<br>    uint32_t 0SPEED;<br>    uint32_t PUPDR;<br>} GPIO_InitTypeDef;</p>
-<p>&#x2F;&#x2F; 2. 编写统一的初始化函数<br>void GPIO_Init(GPIO_TypeDef* GPIOx, GPIO_InitTypeDef* GPIO_InitStruct) {<br>    &#x2F;&#x2F; 开启对应GPIO端口的时钟（以GPIOF为例，实际操作需根据传入的GPIOx动态判断）<br>    RCC-&gt;AHB1ENR |&#x3D; RCC_AHB1ENR_GPIOFEN; </p>
-<pre><code>// 根据结构体中的配置，配置MODER、OSPEEDR、PUPDR等寄存器
-// 这里省略了具体的位运算逻辑，核心思想是通过指针读取结构体的值并写入寄存器
-GPIOx-&gt;MODER &amp;= ~(0x03 GPIO_Pin);
-GPIOx-&gt;MODER |= (GPIO_InitStruct-&gt;GPIO_Mode GPIO_Pin);
-// ... 其他寄存器的配置
+        <p>这次做寄存器映射中的结构体映射<br>结构体映射要从：<br>1.定义基础类型<br>2.建立结构体映射<br>3.用指针配合结构体<br>4.使用 BSRR 寄存器来拉高&#x2F;拉低电平</p>
+<p>一、 为什么要定义基础类型（typedef）？<br>代码片段：<br>typedef unsigned char  uint8_t;<br>typedef unsigned int   uint32_t;<br>原因：跨平台与硬件的“绝对对齐”</p>
+<ol>
+<li>C语言的“不严谨”：在标准 C 语言中，int 到底是 16位、32位还是 64位，取决于你的编译器（比如 PC 上的 GCC 和单片机上的 ARMCC 是不同的）。</li>
+<li>硬件的“强迫症”：STM32 的寄存器是严格的 32位（4字节）或 8位。如果你用 int 去操作一个本该是 32位的寄存器，在某些编译器下可能只分配了 16位，导致你写入的数据被截断，或者覆盖了旁边的其他寄存器。</li>
+<li>结论：通过 typedef 强制规定 uint32_t 就是 32位无符号整数，确保代码在任何编译器下，对内存的读写长度都是绝对一致的</li>
+</ol>
+<p>二、<br> 为什么要用结构体（struct）来映射寄存器？<br>代码片段：<br>typedef struct {<br>    volatile uint32_t MODER;       &#x2F;&#x2F; 偏移 0x00<br>    volatile uint32_t OTYPER;      &#x2F;&#x2F; 偏移 0x04<br>    &#x2F;&#x2F; …<br>} GPIO_RegDef_t;<br>原因：将“冰冷的地址”变成“有逻辑的变量”</p>
+<ol>
+<li>内存的连续性：STM32 的 GPIOA 的所有寄存器在物理内存中是紧挨着的（从 0x40020000 开始，每隔 4 个字节一个）。C 语言的结构体在内存中也是连续分配的</li>
+<li>告别魔法数字（Magic Number）：<ul>
+<li>如果不用结构体，你要配置模式，得写：(volatile uint32_t)(0x40020000 + 0x00) &#x3D; xxx;</li>
+<li>配置速度得写：(volatile uint32_t)(0x40020000 + 0x08) &#x3D; xxx;</li>
+<li>这种代码极难维护，一旦基地址变了，要改几十处</li>
+</ul>
+</li>
+<li>结构体的优雅：定义好结构体后，编译器会自动帮你计算偏移量。你只需要写 pGPIOx-&gt;OSPEEDR &#x3D; xxx;，编译器会自动翻译成 基地址 + 0x08。代码可读性极强，且完美契合芯片手册的寄存器表格<br>关键补充：volatile 关键字的作用<br>注意结构体里的 volatile。它告诉编译器：“这个变量的值可能会在程序之外被改变（被硬件改变），请不要自作聪明把它优化到 CPU 寄存器里，每次都必须老老实实去内存（物理地址）里读取！” 如果没有它，你的代码在开启编译优化（如 -O2）时会彻底失效</li>
+</ol>
+<p>三、 为什么要用指针（Pointer）？<br>代码片段：<br>  define GPIOA ((GPIO_RegDef_t*)GPIOA_BASE)<br>  void My_GPIO_Init(GPIO_RegDef_t *pGPIOx, GPIO_InitTypeDef *pGPIOInit);<br>原因：实现代码的“高度复用”</p>
+<ol>
+<li>硬件的对称性：STM32 有 GPIOA, GPIOB, GPIOC… 它们的内部寄存器结构（MODER, OTYPER等）是一模一样的，仅仅是基地址不同</li>
+<li>指针的魔力：如果我们把函数的参数写成 GPIO_RegDef_t *pGPIOx（一个指向 GPIO 结构体的指针），那么：<ul>
+<li>传 GPIOA 进去，它就操作 GPIOA 的寄存器</li>
+<li>传 GPIOB 进去，它就操作 GPIOB 的寄存器</li>
+</ul>
+</li>
+<li>结论：通过指针，你只需要写一套初始化函数，就能控制芯片上的几十个 GPIO 端口。这就是底层驱动框架设计的核心思想。</li>
+</ol>
+<p>四、 为什么要用 BSRR 寄存器来拉高&#x2F;拉低电平？<br>代码片段：<br>&#x2F;&#x2F; 拉高：低 16 位置 1<br>GPIOA-&gt;BSRR &#x3D; (1 BSRR &#x3D; (1 ODR |&#x3D; (1 ODR 步骤2：在 CPU 内部修改第 14 位 -&gt; 步骤3. 把新值写回 ODR))))<br>   如果在步骤2和步骤3之间，发生了中断，并且中断里也修改了 GPIOA 的其他引脚，那么中断返回后，步骤3.会把中断里的修改直接覆盖掉！这就叫“非原子操作”，极易引发隐蔽的 Bug<br>2. BSRR 的完美设计（原子操作）：<br>   BSRR（Bit Set&#x2F;Reset Register）是一个只写寄存器，硬件为它设计了特殊的逻辑：</p>
+<ul>
+<li>低 16 位 (0~15)：写 1 会将 ODR 对应位置 1（拉高），写 0 无效</li>
+<li>高 16 位 (16~31)：写 1 会将 ODR 对应位置 0（拉低），写 0 无效</li>
+</ul>
+<p>   优势：你只需要一条赋值语句（一条汇编指令 STR），硬件直接在内部完成“置位”或“清零”，不需要读-改-写的过程。这被称为原子操作，即使在最高优先级的中断里操作 BSRR，也绝对不会影响其他引脚的状态</p>
+<p>总结：</p>
+<ul>
+<li>基础类型保证了数据宽度的绝对正确；</li>
+<li>结构体把物理地址变成了优雅的代码；</li>
+<li>指针让一套代码控制了所有外设；</li>
+<li>BSRR 则利用硬件特性，保证了电平翻转的绝对安全与高效</li>
+</ul>
+<p>总体代码<br>1.函数库代码<br>&#x2F;* — 基础类型定义  — *&#x2F;<br>typedef unsigned char  uint8_t;<br>typedef unsigned short uint16_t;<br>typedef unsigned int   uint32_t;</p>
+<p>&#x2F;* — 1. GPIO 结构体定义  — *&#x2F;<br>typedef struct {<br>    uint32_t GPIO_Pin;             &#x2F;&#x2F; 引脚号<br>    uint8_t  GPIO_Mode;            &#x2F;&#x2F; 模式: 0&#x3D;输入, 1&#x3D;输出, 2&#x3D;复用, 3&#x3D;模拟<br>    uint8_t  GPIO_Speed;           &#x2F;&#x2F; 速度: 0&#x3D;2M, 1&#x3D;25M, 2&#x3D;50M, 3&#x3D;100M<br>    uint8_t  GPIO_OType;           &#x2F;&#x2F; 输出类型: 0&#x3D;推挽, 1&#x3D;开漏<br>    uint8_t  GPIO_PuPd;            &#x2F;&#x2F; 上下拉: 0&#x3D;无, 1&#x3D;上拉, 2&#x3D;下拉<br>} GPIO_InitTypeDef;</p>
+<p>&#x2F;&#x2F; 将物理地址强制转换为结构体指针，这样就能像操作变量一样操作寄存器<br>typedef struct {<br>    volatile uint32_t MODER;       &#x2F;&#x2F; 偏移 0x00<br>    volatile uint32_t OTYPER;      &#x2F;&#x2F; 偏移 0x04<br>    volatile uint32_t OSPEEDR;     &#x2F;&#x2F; 偏移 0x08<br>    volatile uint32_t PUPDR;       &#x2F;&#x2F; 偏移 0x0C<br>    volatile uint32_t IDR;         &#x2F;&#x2F; 偏移 0x10<br>    volatile uint32_t ODR;         &#x2F;&#x2F; 偏移 0x14<br>    volatile uint32_t BSRR;        &#x2F;&#x2F; 偏移 0x18<br>    volatile uint32_t LCKR;        &#x2F;&#x2F; 偏移 0x1C<br>    volatile uint32_t AFRL;        &#x2F;&#x2F; 偏移 0x20<br>    volatile uint32_t AFRH;        &#x2F;&#x2F; 偏移 0x24<br>} GPIO_RegDef_t;</p>
+<p>&#x2F;&#x2F; 定义 GPIOA 指针，指向物理地址<br>#define GPIOA                 ((GPIO_RegDef_t*)GPIOA_BASE)</p>
+<p>2.main代码<br>#include “stm32f4xx.h” </p>
+<p>void My_GPIO_Init(GPIO_RegDef_t *pGPIOx, GPIO_InitTypeDef *pGPIOInit);</p>
+<p>int main(void)<br>{<br>	GPIO_InitTypeDef cfg;<br>	My_GPIO_Init(GPIOA, &amp;cfg);<br>	while(1);<br>	{<br>	}<br>}</p>
+<p>void My_GPIO_Init(GPIO_RegDef_t *pGPIOx, GPIO_InitTypeDef *pGPIOInit)<br>{<br>   	RCC_AHB1ENR |&#x3D; (1&lt;&lt;0);	</p>
+<pre><code>// 1. 配置 MODER (模式)
+// 这里为了简单，只演示配置单个引脚的逻辑，实际库函数会遍历所有位
+// 假设我们要配置 Pin 14 为输出 (Mode = 01b)
+// 注意：这里简化了逻辑，实际需要根据 pGPIOInit-&gt;GPIO_Pin 计算位移
+
+// 为了让你直接能用，针对 PA14 输出的硬编码示例：
+pGPIOx-&gt;MODER &amp;= ~(3 &lt;&lt; (14*2)); // 清除 PA14 的两位
+pGPIOx-&gt;MODER |= (1 &lt;&lt; (14*2));  // 设置为输出 (01)
+
+// 2. 配置 OTYPER (推挽/开漏) - 只有1位
+
+    pGPIOx-&gt;OTYPER |= (1 &lt;&lt; 14);
+
+    pGPIOx-&gt;OTYPER &amp;= ~(1 &lt;&lt; 14);
+
+// 3. 配置 OSPEEDR (速度) - 2位
+pGPIOx-&gt;OSPEEDR &amp;= ~(3 &lt;&lt; (14*2));
+pGPIOx-&gt;OSPEEDR |= (pGPIOInit-&gt;GPIO_Speed &lt;&lt; (14*2));
+
+// 4. 配置 PUPDR (上下拉) - 2位
+pGPIOx-&gt;PUPDR &amp;= ~(3 &lt;&lt; (14*2));
+pGPIOx-&gt;PUPDR |= (pGPIOInit-&gt;GPIO_PuPd &lt;&lt; (14*2));
+// 4. 控制输出高电平 (Set Bit)
+//GPIOA-&gt;BSRR = (1 &lt;&lt; 14); 
+	// 4. 控制输出低电平 
+GPIOA-&gt;BSRR = (1 &lt;&lt; 14+16); 
+while(1)
+{
+}
 </code></pre>
 <p>}</p>
-<p>&#x2F;&#x2F; 3. 在main函数中的标准使用流程：<br>GPIO_InitTypeDef GPIO_InitStructure;<br>GPIO_InitStructure.GPIO_Pin &#x3D; GPIO_Pin_6;<br>GPIO_InitStructure.GPIO_Mode &#x3D; GPIO_Mode_OUT;<br>GPIO_InitStructure.GPIO_Speed &#x3D; GPIO_Speed_50MHz;<br>GPIO_InitStructure.GPIO_PuPd &#x3D; GPIO_PuPd_UP;<br>GPIO_Init(GPIOF, &amp;GPIO_InitStructure);</p>
-<p>总结:嵌入式软件架构的演进过程：绝对地址访问 -&gt; 结构体映射 -&gt; 函数封装 -&gt; 结构体传参</p>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/19/%E6%89%8B%E5%8A%A8%E6%90%AD%E5%BB%BAGPIO%E5%87%BD%E6%95%B0%E5%BA%93%E5%87%BD%E6%95%B0%E9%9B%8F%E5%BD%A2/" data-id="cuidKMpXT5Mak-_j_u2nF8Vi4" data-title="手动搭建GPIO函数库函数雏形.1" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2026/07/22/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B02/" data-id="cuidFjgBVSIYFbhJ_v7AZULY7" data-title="手动搭建GPIO函数库函数雏形.2" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -138,19 +200,10 @@ GPIOx-&gt;MODER |= (GPIO_InitStruct-&gt;GPIO_Mode GPIO_Pin);
     
 <nav id="article-nav">
   
-    <a href="/2026/07/20/C%E8%AF%AD%E8%A8%80%E8%BF%90%E7%AE%97%E7%9F%A5%E8%AF%86/" id="article-nav-newer" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">Newer</strong>
-      <div class="article-nav-title">
-        
-          C语言运算知识
-        
-      </div>
-    </a>
   
-  
-    <a href="/2026/07/19/C%E8%AF%AD%E8%A8%80%E5%85%B3%E4%BA%8Escanf%E5%92%8Ctypedef%E7%9A%84%E7%AC%94%E8%AE%B0/" id="article-nav-older" class="article-nav-link-wrap">
+    <a href="/2026/07/21/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B0/" id="article-nav-older" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Older</strong>
-      <div class="article-nav-title">C语言关于scanf,typedef的笔记</div>
+      <div class="article-nav-title">STM32f407GPIO寄存器实操笔记</div>
     </a>
   
 </nav>
