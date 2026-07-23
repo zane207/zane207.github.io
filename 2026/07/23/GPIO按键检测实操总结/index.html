@@ -4,23 +4,23 @@
   <meta charset="utf-8">
   
   
-  <title>手动搭建GPIO函数库函数雏形.1 | Hexo</title>
+  <title>GPIO按键检测实操总结 | Hexo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta name="description" content="一：外设寄存器结构体定义核心思想：在之前的课程中，操作一个GPIO引脚需要记住基地址和偏移地址（如 0x40021400+0x00），这非常容易出错。这节课引入了编程学习中结构体（struct），将属于同一个外设（如GPIOF）的所有寄存器打包在一起。通过指针强转，我们可以用 -&gt; 语法直观地访问各个寄存器。 关键代码：&#x2F;&#x2F; 1. 定义GPIO外设的结构体，严格按照数据手">
+  <meta name="description" content="使用固件库编写代码的执行顺序都分为三部 一、 初始化配置：KEY_GPIO_Config 函数 这部分对应理论总结中的“软件配置三步曲”  开启外设时钟RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA|RCC_AHB1Periph_GPIOC, ENABLE);原理解析：STM32的时钟树设计是为了降低功耗。所有的外设（包括GPIO）默认都是关闭的，使用位或运">
 <meta property="og:type" content="article">
-<meta property="og:title" content="手动搭建GPIO函数库函数雏形.1">
-<meta property="og:url" content="http://example.com/2026/07/19/%E6%89%8B%E5%8A%A8%E6%90%AD%E5%BB%BAGPIO%E5%87%BD%E6%95%B0%E5%BA%93%E5%87%BD%E6%95%B0%E9%9B%8F%E5%BD%A2/index.html">
+<meta property="og:title" content="GPIO按键检测实操总结">
+<meta property="og:url" content="http://example.com/2026/07/23/GPIO%E6%8C%89%E9%94%AE%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%93%8D%E6%80%BB%E7%BB%93/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:description" content="一：外设寄存器结构体定义核心思想：在之前的课程中，操作一个GPIO引脚需要记住基地址和偏移地址（如 0x40021400+0x00），这非常容易出错。这节课引入了编程学习中结构体（struct），将属于同一个外设（如GPIOF）的所有寄存器打包在一起。通过指针强转，我们可以用 -&gt; 语法直观地访问各个寄存器。 关键代码：&#x2F;&#x2F; 1. 定义GPIO外设的结构体，严格按照数据手">
+<meta property="og:description" content="使用固件库编写代码的执行顺序都分为三部 一、 初始化配置：KEY_GPIO_Config 函数 这部分对应理论总结中的“软件配置三步曲”  开启外设时钟RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA|RCC_AHB1Periph_GPIOC, ENABLE);原理解析：STM32的时钟树设计是为了降低功耗。所有的外设（包括GPIO）默认都是关闭的，使用位或运">
 <meta property="og:locale" content="en_US">
-<meta property="article:published_time" content="2026-07-19T14:02:14.000Z">
-<meta property="article:modified_time" content="2026-07-22T06:12:30.584Z">
+<meta property="article:published_time" content="2026-07-23T10:06:22.000Z">
+<meta property="article:modified_time" content="2026-07-23T10:19:02.836Z">
 <meta property="article:author" content="John Doe">
 <meta property="article:tag" content="F407">
 <meta property="article:tag" content="GPIO">
 <meta property="article:tag" content="STM32">
-<meta property="article:tag" content="寄存器">
 <meta property="article:tag" content="库函数">
+<meta property="article:tag" content="按键输入">
 <meta name="twitter:card" content="summary">
   
     <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
@@ -78,10 +78,10 @@
 </header>
 
       <div class="outer">
-        <section id="main"><article id="post-手动搭建GPIO函数库函数雏形" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+        <section id="main"><article id="post-GPIO按键检测实操总结" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
-    <a href="/2026/07/19/%E6%89%8B%E5%8A%A8%E6%90%AD%E5%BB%BAGPIO%E5%87%BD%E6%95%B0%E5%BA%93%E5%87%BD%E6%95%B0%E9%9B%8F%E5%BD%A2/" class="article-date">
-  <time class="dt-published" datetime="2026-07-19T14:02:14.000Z" itemprop="datePublished">2026-07-19</time>
+    <a href="/2026/07/23/GPIO%E6%8C%89%E9%94%AE%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%93%8D%E6%80%BB%E7%BB%93/" class="article-date">
+  <time class="dt-published" datetime="2026-07-23T10:06:22.000Z" itemprop="datePublished">2026-07-23</time>
 </a>
     
   <div class="article-category">
@@ -96,7 +96,7 @@
         
   
     <h1 class="p-name article-title" itemprop="headline name">
-      手动搭建GPIO函数库函数雏形.1
+      GPIO按键检测实操总结
     </h1>
   
 
@@ -104,33 +104,59 @@
     
     <div class="e-content article-entry" itemprop="articleBody">
       
-        <p>一：外设寄存器结构体定义<br>核心思想：<br>在之前的课程中，操作一个GPIO引脚需要记住基地址和偏移地址（如 0x40021400+0x00），这非常容易出错。这节课引入了编程学习中结构体（struct），将属于同一个外设（如GPIOF）的所有寄存器打包在一起。通过指针强转，我们可以用 -&gt; 语法直观地访问各个寄存器。</p>
-<p>关键代码：<br>&#x2F;&#x2F; 1. 定义GPIO外设的结构体，严格按照数据手册的寄存器顺序排列<br>typedef unsigened int       uint32_t;<br>typedef unsigened short int uint16_t;<br>typedef struct<br> {<br>    uint32_t MODER;    &#x2F;&#x2F; 模式寄存器 (偏移量: 0x00)<br>    uint32_t OTYPER;   &#x2F;&#x2F; 输出类型寄存器 (偏移量: 0x04)<br>    uint32_t OSPEEDR;  &#x2F;&#x2F; 输出速度寄存器 (偏移量: 0x08)<br>    uint32_t PUPDR;    &#x2F;&#x2F; 上下拉寄存器 (偏移量: 0x0C)<br>    uint32_t IDR;      &#x2F;&#x2F; 输入数据寄存器 (偏移量: 0x10)<br>    uint32_t ODR;      &#x2F;&#x2F; 输出数据寄存器 (偏移量: 0x14)<br>    uint16_t BSRRL&#x2F;H;     &#x2F;&#x2F; 置位&#x2F;复位寄存器 (偏移量: 0x18)<br>    uint32_t LCKR;     &#x2F;&#x2F; 配置锁定寄存器 (偏移量: 0x1C)<br>    uint32_t AFRL&#x2F;H;   &#x2F;&#x2F; 复用低&#x2F;高功能寄存器 (偏移量: 0x20, 0x24)<br>} GPIO_TypeDef;</p>
-<p>&#x2F;&#x2F; 2. 利用宏定义，将结构体指针绑定到具体的硬件基地址上<br>define GPIOF_BASE  (( unsigned  int )0x40021400)<br>define GPIOF       (GPIO_TypeDef *)GPIOF_BASE</p>
-<p>二：编写端口复位和置位函数<br>核心思想：<br>封装好结构体后，接下来把常用的操作（如点亮、熄灭LED）封装成函数。这样在 main.c 中调用时，代码的可读性会大幅提升，不再需要写冗长的位操作（&amp;&#x3D; ~ 或 |&#x3D;）。</p>
-<p>关键代码：<br>&#x2F;&#x2F; 置位函数（输出高电平）<br>void GPIO_SetBits(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)<br>{<br>    GPIOx-&gt;BSRRL &#x3D; GPIO_Pin;  &#x2F;&#x2F; 向低16位写1，对应引脚输出高电平<br>}</p>
-<p>&#x2F;&#x2F; 复位函数（输出低电平）<br>void GPIO_ResetBits(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)<br>{<br>    GPIOx-&gt;BSRRH &#x3D; GPIO_Pin;  &#x2F;&#x2F; 向高16位写1，对应引脚输出低电平<br>}<br>&#x2F;&#x2F; 在main函数中调用变得非常简洁：<br>&#x2F;&#x2F; GPIO_SetBits(GPIOF, GPIO_Pin_6);</p>
-<p>三：定义外设初始化结构体和编写外设初始化函数<br>核心思想：<br>为了避免初始化函数出现“参数爆炸”（即函数括号里需要传入十几个参数），引入了初始化配置结构体。将引脚、模式、速度等配置打包，通过指针一次性传给初始化函数。</p>
-<p>关键代码：<br>&#x2F;&#x2F; 1. 定义GPIO初始化配置结构体<br>typedef struct<br> {<br>    GPIOMode_TypeDef MODER;<br>    uint32_t 0TYPER;<br>    uint32_t 0SPEED;<br>    uint32_t PUPDR;<br>} GPIO_InitTypeDef;</p>
-<p>&#x2F;&#x2F; 2. 编写统一的初始化函数<br>void GPIO_Init(GPIO_TypeDef* GPIOx, GPIO_InitTypeDef* GPIO_InitStruct) {<br>    &#x2F;&#x2F; 开启对应GPIO端口的时钟（以GPIOF为例，实际操作需根据传入的GPIOx动态判断）<br>    RCC-&gt;AHB1ENR |&#x3D; RCC_AHB1ENR_GPIOFEN; </p>
-<pre><code>// 根据结构体中的配置，配置MODER、OSPEEDR、PUPDR等寄存器
-// 这里省略了具体的位运算逻辑，核心思想是通过指针读取结构体的值并写入寄存器
-GPIOx-&gt;MODER &amp;= ~(0x03 GPIO_Pin);
-GPIOx-&gt;MODER |= (GPIO_InitStruct-&gt;GPIO_Mode GPIO_Pin);
-// ... 其他寄存器的配置
+        <p>使用固件库编写代码的执行顺序都分为三部</p>
+<p>一、 初始化配置：KEY_GPIO_Config 函数</p>
+<p>这部分对应理论总结中的“软件配置三步曲”</p>
+<ol>
+<li>开启外设时钟<br>RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA|RCC_AHB1Periph_GPIOC, ENABLE);<br>原理解析：STM32的时钟树设计是为了降低功耗。所有的外设（包括GPIO）默认都是关闭的，使用位或运算符 | 将 GPIOA 和 GPIOC 的时钟使能位合并，一次性开启，这在工程上是非常高效的写法</li>
+<li>配置引脚模式与上下拉<br>GPIO_InitStruct.GPIO_Pin &#x3D; GPIO_Pin_0;<br>GPIO_InitStruct.GPIO_Mode &#x3D; GPIO_Mode_IN;<br>GPIO_InitStruct.GPIO_PuPd &#x3D; GPIO_PuPd_NOPULL;<br>GPIO_Init(GPIOA, &amp;GPIO_InitStruct);<br>原理解析：这里将 PA0 和 PC13 配置为输入模式</li>
+</ol>
+<ul>
+<li>关键工程提醒： GPIO_PuPd_NOPULL（浮空输入），根据野火的理论总结：“硬件电路上，按键通常配合上拉或下拉电阻使用，目的是避免引脚悬空导致状态混乱” </li>
+<li>如果外部没有电阻，必须改成 GPIO_PuPd_UP（上拉输入）或 GPIO_PuPd_DOWN（下拉输入），否则引脚处于不确定状态，会导致按键失灵或误触发</li>
+</ul>
+<p>二、 按键扫描逻辑：KEY_Scan 函数<br>这部分对应理论总结中的“逻辑判断”与“防误触机制”<br>uint8_t KEY_Scan(GPIO_TypeDef *GPIOx,uint16_t GPIO_Pin)<br>{<br>  if(GPIO_ReadInputDataBit(GPIOx, GPIO_Pin)&#x3D;&#x3D; KEY_ON )<br>  {<br>      while(GPIO_ReadInputDataBit(GPIOx, GPIO_Pin)&#x3D;&#x3D; KEY_ON);<br>      return KEY_ON;<br>  }		<br>  else return KEY_OFF;<br>}</p>
+<ol>
+<li>状态读取与判断</li>
+</ol>
+<ul>
+<li>GPIO_ReadInputDataBit 是标准库函数，直接读取输入数据寄存器（IDR）的对应位，通过判断返回值是否等于宏定义的 KEY_ON，来确定按键是否触发</li>
+</ul>
+<ol start="2">
+<li>阻塞式等待（松手检测）</li>
+</ol>
+<ul>
+<li>while(GPIO_ReadInputDataBit(…) &#x3D;&#x3D; KEY_ON); 这是一个阻塞式（Blocking）的死循环</li>
+<li>工程意义：它的目的是实现“单次触发”逻辑。只要用户的手指没有离开按键，程序就会一直卡在这个 while 循环里，不会返回 KEY_ON。只有松开按键，电平恢复，才会跳出循环并返回信。这避免了“长按导致LED疯狂闪烁”的问题</li>
+</ul>
+<p>三、 主程序逻辑：main 函数<br>while (1)<br>{<br>    if( KEY_Scan(GPIOA,GPIO_Pin_0) &#x3D;&#x3D;KEY_ON )<br>    {<br>        LED1_TOGGLE;<br>    }	</p>
+<p>}</p>
+<ul>
+<li>原理解析：这是典型的轮询（Polling）架构。单片机在 while(1) 中不断调用 KEY_Scan</li>
+</ul>
+<p>void KEY_GPIO_Config(void)<br>{<br>   &#x2F;* 以下以下四个步骤适合所有外设的初始化 <em>&#x2F;	<br>	<br>   &#x2F;</em> 第一步：开GPIO时钟 <em>&#x2F;<br>	 RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);<br>	<br>   &#x2F;</em> 第二步：定义一个GPIO初始化结构体 <em>&#x2F;<br>   GPIO_InitTypeDef GPIO_InitStruct;<br>	<br>	 &#x2F;</em> 第三步：配置GPIO初始化结构体的成员 <em>&#x2F;<br>	 GPIO_InitStruct.GPIO_Pin &#x3D; GPIO_Pin_0;<br>	 GPIO_InitStruct.GPIO_Mode &#x3D; GPIO_Mode_IN;<br>	&#x2F;&#x2F; GPIO_InitStruct.GPIO_Speed &#x3D; GPIO_Low_Speed;<br>	&#x2F;&#x2F; GPIO_InitStruct.GPIO_OType &#x3D; GPIO_OType_PP;<br>	 GPIO_InitStruct.GPIO_PuPd &#x3D; GPIO_PuPd_NOPULL;<br>	 &#x2F;</em> 第四步：调用GPIO初始化函数，把配置好的结构体的成员的参数写入寄存器 *&#x2F;<br>   GPIO_Init(GPIOA, &amp;GPIO_InitStruct);<br>	<br>}</p>
+<p>uint8_t KEY_Scan(GPIO_TypeDef *GPIOx,uint16_t GPIO_Pin)<br>{<br>  if(GPIO_ReadInputDataBit(GPIOx, GPIO_Pin)&#x3D;&#x3D; KEY_ON )<br>	{<br>	  while(GPIO_ReadInputDataBit(GPIOx, GPIO_Pin)&#x3D;&#x3D; KEY_ON);<br>	       return KEY_ON;<br>	<br>	}		<br>  else return  KEY_OFF;<br>	<br>}</p>
+<p>int main(void)<br>{<br>	&#x2F;* LED 端口初始化 *&#x2F;<br>	LED_GPIO_Config();<br>	<br>	KEY_GPIO_Config();</p>
+<pre><code>/* 按键扫描 */
+while (1)
+{
+	if( KEY_Scan(GPIOA,GPIO_Pin_0) ==KEY_ON )
+	{
+	LED1_TOGGLE;
+	}	
+}
 </code></pre>
 <p>}</p>
-<p>&#x2F;&#x2F; 3. 在main函数中的标准使用流程：<br>GPIO_InitTypeDef GPIO_InitStructure;<br>GPIO_InitStructure.GPIO_Pin &#x3D; GPIO_Pin_6;<br>GPIO_InitStructure.GPIO_Mode &#x3D; GPIO_Mode_OUT;<br>GPIO_InitStructure.GPIO_Speed &#x3D; GPIO_Speed_50MHz;<br>GPIO_InitStructure.GPIO_PuPd &#x3D; GPIO_PuPd_UP;<br>GPIO_Init(GPIOF, &amp;GPIO_InitStructure);</p>
-<p>总结:嵌入式软件架构的演进过程：绝对地址访问 -&gt; 结构体映射 -&gt; 函数封装 -&gt; 结构体传参</p>
+<p>void Delay(__IO uint32_t nCount)	 &#x2F;&#x2F;简单的延时函数<br>{<br>	for(; nCount !&#x3D; 0; nCount–);<br>}</p>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/19/%E6%89%8B%E5%8A%A8%E6%90%AD%E5%BB%BAGPIO%E5%87%BD%E6%95%B0%E5%BA%93%E5%87%BD%E6%95%B0%E9%9B%8F%E5%BD%A2/" data-id="cuidKMpXT5Mak-_j_u2nF8Vi4" data-title="手动搭建GPIO函数库函数雏形.1" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2026/07/23/GPIO%E6%8C%89%E9%94%AE%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%93%8D%E6%80%BB%E7%BB%93/" data-id="cuid1yEwk-45J6DEXTA1rYrZF" data-title="GPIO按键检测实操总结" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li></ul>
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" rel="tag">按键输入</a></li></ul>
 
     </footer>
   </div>
@@ -138,19 +164,10 @@ GPIOx-&gt;MODER |= (GPIO_InitStruct-&gt;GPIO_Mode GPIO_Pin);
     
 <nav id="article-nav">
   
-    <a href="/2026/07/20/C%E8%AF%AD%E8%A8%80%E8%BF%90%E7%AE%97%E7%9F%A5%E8%AF%86/" id="article-nav-newer" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">Newer</strong>
-      <div class="article-nav-title">
-        
-          C语言运算知识
-        
-      </div>
-    </a>
   
-  
-    <a href="/2026/07/19/C%E8%AF%AD%E8%A8%80%E5%85%B3%E4%BA%8Escanf%E5%92%8Ctypedef%E7%9A%84%E7%AC%94%E8%AE%B0/" id="article-nav-older" class="article-nav-link-wrap">
+    <a href="/2026/07/22/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B02/" id="article-nav-older" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Older</strong>
-      <div class="article-nav-title">C语言关于scanf,typedef的笔记</div>
+      <div class="article-nav-title">手动搭建GPIO函数库函数雏形.2</div>
     </a>
   
 </nav>
