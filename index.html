@@ -71,6 +71,84 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-STM32F407带位操作总结" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2026/07/24/STM32F407%E5%B8%A6%E4%BD%8D%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/" class="article-date">
+  <time class="dt-published" datetime="2026-07-24T09:15:28.000Z" itemprop="datePublished">2026-07-24</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2026/07/24/STM32F407%E5%B8%A6%E4%BD%8D%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/">STM32F407带位操作总结</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>STM32 位带操作 小白通俗讲解笔记（可直接存入GitHub嵌入式分类）</p>
+<p>一、什么是位带？<br>单片机寄存器都是 32位 的，一个寄存器里面挤了32个引脚电平（每1位代表1个引脚：0低电平、1高电平）<br>正常写法想单独修改其中某1个引脚：<br>要先把整个寄存器数值读出来 → 掩码清零目标位 → 赋值1&#x2F;0 → 写回寄存器，代码繁琐</p>
+<p>位带（Bit-Band）就是ST给F1&#x2F;F4系列单片机设计的快捷机制：<br>把寄存器里每1个二进制位，单独映射成1个完整32位内存地址<br>直接给这个专属地址赋值 1 或 0，就能只修改单个引脚电平，不用复杂位运算</p>
+<p>举例子：<br>ODR输出寄存器第6位（PF6引脚），对应一个独立地址<br>PFout(6) &#x3D; 1; 直接拉高PF6<br>PFout(6) &#x3D; 0; 直接拉低PF6</p>
+<p>二、位带两大区域（STM32F4）<br>单片机内存划分两块支持位带的区域：</p>
+<ol>
+<li>外设位带区：片上所有GPIO、定时器等外设寄存器<br>我们点灯、操作引脚只用这一块</li>
+<li>SRAM位带区：内存变量<br>规则：<br>原始1bit（1个位） → 映射别名区占用 4字节（1个32位地址）<br>原始1个位带区地址 &#x3D; 别名区基础地址 + 偏移计算得来</li>
+</ol>
+<p>三、位带地址计算公式拆解（你代码里的宏逐句翻译）</p>
+<ol>
+<li>核心计算公式宏</li>
+</ol>
+<p>#define BITBAND(addr, bitnum) ((addr &amp; 0xF0000000)+0x02000000+((addr &amp; 0x000FFFFF)&lt;&lt;5)+(bitnum&lt;&lt;2))<br>代码解释：</p>
+<ol>
+<li>addr &amp; 0xF0000000：取出外设寄存器所在大区基地址（外设都是0x40000000开头）</li>
+<li>+0x02000000：跳到位带别名区起始地址</li>
+<li>(addr &amp; 0x000FFFFF)&lt;&lt;5：原始寄存器整体偏移换算别名区偏移，左移5 &#x3D; ×32</li>
+<li>bitnum&lt;&lt;2：指定要操作的第几位，左移2 &#x3D; ×4（1位占4字节空间）<br>最终算出：某寄存器第bitnum个位 对应的位带别名地址</li>
+<li>指针访问宏</li>
+</ol>
+<p>#define MEM(addr)  (*(volatile unsigned long *)(addr))<br>• volatile：强制每次都去硬件地址读取，不被编译器优化（单片机寄存器必备关键字）<br>• 把数字地址强制转为指针，解引用后可以直接赋值读写<br>3. 封装整合宏<br>#define BIT_ADDR(addr, bitnum)  MEM(BITBAND(addr, bitnum))<br>输入：寄存器原始地址 + 要操作的位序号<br>输出：可直接赋值的位带地址<br>4. 引脚快捷操作宏（以GPIOF为例）<br>#define GPIOF_ODR_ADDR    (GPIOF_BASE+0x14)  &#x2F;&#x2F;GPIOF输出寄存器地址<br>#define PFout(n)      BIT_ADDR(GPIOF_ODR_ADDR, n)<br>调用：<br>PFout(5)&#x3D;1; 拉高PF5引脚<br>PFout(5)&#x3D;0; 拉低PF5引脚</p>
+<p>四、传统写法 VS 位带写法对比<br>需求：把PF6引脚置低电平<br>老式寄存器写法<br>GPIOF_ODR &amp;&#x3D; ~(1&lt;&lt;6);<br>需要手动用按位取反、与运算，新手很容易写错位数<br>位带极简写法<br>PFout(6) &#x3D; 0;<br>数字对应引脚号，直观好记，几乎不会出错</p>
+<p>五、位带优缺点<br>优点</p>
+<ol>
+<li>代码极简，读写单个IO引脚超级方便</li>
+<li>可读性极高，新手友好</li>
+<li>底层硬件实现，执行效率很高<br>缺点</li>
+<li>仅STM32 F1、F4系列支持；H7、L4等新款芯片取消了位带功能，不能通用</li>
+<li>只能操作：GPIO输出寄存器ODR、输入寄存器IDR、内存变量；其他寄存器场景受限</li>
+</ol>
+<p>六、完整可编译整套位带代码（F407）<br>&#x2F;&#x2F;位带基础宏定义<br>#define BITBAND(addr, bitnum) ((addr &amp; 0xF0000000)+0x02000000+((addr &amp; 0x000FFFFF)&lt;&lt;5)+(bitnum&lt;&lt;2))<br>#define MEM(addr)              (*(volatile unsigned long *)(addr))<br>#define BIT_ADDR(addr, bitnum) MEM(BITBAND(addr, bitnum))</p>
+<p>&#x2F;&#x2F;GPIOF输出引脚位带操作<br>#define GPIOF_ODR_ADDR  (GPIOF_BASE + 0x14)<br>#define PFout(n)        BIT_ADDR(GPIOF_ODR_ADDR, n)</p>
+<p>&#x2F;&#x2F;GPIOB、GPIOA可以照抄拓展<br>#define GPIOA_ODR_ADDR  (GPIOA_BASE + 0x14)<br>#define PAout(n)        BIT_ADDR(GPIOA_ODR_ADDR, n)</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2026/07/24/STM32F407%E5%B8%A6%E4%BD%8D%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/" data-id="cuid8xOVAVE_-Pifa5aQHCZdo" data-title="STM32F407带位操作总结" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" rel="tag">寄存器编程</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
     <article id="post-GPIO按键检测实操总结" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
     <a href="/2026/07/23/GPIO%E6%8C%89%E9%94%AE%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%93%8D%E6%80%BB%E7%BB%93/" class="article-date">
@@ -145,7 +223,7 @@ while (1)
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/23/GPIO%E6%8C%89%E9%94%AE%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%93%8D%E6%80%BB%E7%BB%93/" data-id="cuid1yEwk-45J6DEXTA1rYrZF" data-title="GPIO按键检测实操总结" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2026/07/23/GPIO%E6%8C%89%E9%94%AE%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%93%8D%E6%80%BB%E7%BB%93/" data-id="cuid4_O_sFOrp7EKpSqYGKDpa" data-title="GPIO按键检测实操总结" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -269,7 +347,7 @@ while(1)
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/22/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B02/" data-id="cuidFjgBVSIYFbhJ_v7AZULY7" data-title="手动搭建GPIO函数库函数雏形.2" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2026/07/22/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B02/" data-id="cuidcLLMLo79o3dihNZC_cGL2" data-title="手动搭建GPIO函数库函数雏形.2" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -370,7 +448,7 @@ while(1);
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/21/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B0/" data-id="cuid3_OS3e1VecMqZyJmQmjrp" data-title="STM32f407GPIO寄存器实操笔记" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2026/07/21/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B0/" data-id="cuid9HobVhRuMP8M6ZJsOtdoL" data-title="STM32f407GPIO寄存器实操笔记" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -476,7 +554,7 @@ while(1);
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/20/C%E8%AF%AD%E8%A8%80%E8%BF%90%E7%AE%97%E7%9F%A5%E8%AF%86/" data-id="cuidXpQB37QQPZyc6jjg-5EJm" data-title="C语言运算知识" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2026/07/20/C%E8%AF%AD%E8%A8%80%E8%BF%90%E7%AE%97%E7%9F%A5%E8%AF%86/" data-id="cuidRARzwCz9SOzmobihO7SmY" data-title="C语言运算知识" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -538,7 +616,7 @@ GPIOx-&gt;MODER |= (GPIO_InitStruct-&gt;GPIO_Mode GPIO_Pin);
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/19/%E6%89%8B%E5%8A%A8%E6%90%AD%E5%BB%BAGPIO%E5%87%BD%E6%95%B0%E5%BA%93%E5%87%BD%E6%95%B0%E9%9B%8F%E5%BD%A2/" data-id="cuidKMpXT5Mak-_j_u2nF8Vi4" data-title="手动搭建GPIO函数库函数雏形.1" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2026/07/19/%E6%89%8B%E5%8A%A8%E6%90%AD%E5%BB%BAGPIO%E5%87%BD%E6%95%B0%E5%BA%93%E5%87%BD%E6%95%B0%E9%9B%8F%E5%BD%A2/" data-id="cuidAOxFSTbs7flX59Gs8Rsje" data-title="手动搭建GPIO函数库函数雏形.1" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -635,7 +713,7 @@ GPIOx-&gt;MODER |= (GPIO_InitStruct-&gt;GPIO_Mode GPIO_Pin);
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/19/C%E8%AF%AD%E8%A8%80%E5%85%B3%E4%BA%8Escanf%E5%92%8Ctypedef%E7%9A%84%E7%AC%94%E8%AE%B0/" data-id="cuidradB38LR6OI11t8FI2YL5" data-title="C语言关于scanf,typedef的笔记" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2026/07/19/C%E8%AF%AD%E8%A8%80%E5%85%B3%E4%BA%8Escanf%E5%92%8Ctypedef%E7%9A%84%E7%AC%94%E8%AE%B0/" data-id="cuidKJ6hms82NDQKgvF73rRvq" data-title="C语言关于scanf,typedef的笔记" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -702,7 +780,7 @@ return 0;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/18/C%E8%AF%AD%E8%A8%80%E7%BB%93%E6%9E%84%E4%BD%93%E7%AC%94%E8%AE%B0/" data-id="cuidra0sN7wT7JYCG0HPiEuMP" data-title="C语言结构体笔记" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2026/07/18/C%E8%AF%AD%E8%A8%80%E7%BB%93%E6%9E%84%E4%BD%93%E7%AC%94%E8%AE%B0/" data-id="cuidWRvKCk21iZo6jINR3lZzp" data-title="C语言结构体笔记" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -752,7 +830,7 @@ return 0;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/18/chenge-first-blog/" data-id="cuidR5WHzhRfxq1RhnZh4gUEm" data-title="change-first-blog" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2026/07/18/chenge-first-blog/" data-id="cuidz0GDLH2QfPiR68nAvGctd" data-title="change-first-blog" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -805,7 +883,7 @@ return 0;
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/18/hello-world/" data-id="cuidAX7ZjmK87ecU1w_Ksdqlb" data-title="Hello World" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2026/07/18/hello-world/" data-id="cuidfW3Aa3Z2mJPoq2iotbQDY" data-title="Hello World" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -837,7 +915,7 @@ return 0;
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/scanf/" rel="tag">scanf</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/typedef/" rel="tag">typedef</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">位运算与位运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" rel="tag">原码·反码·补码</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">复合赋值运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" rel="tag">按键输入</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" rel="tag">结构体</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" rel="tag">编程入门</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" rel="tag">编程笔记</a></li></ul>
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/scanf/" rel="tag">scanf</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/typedef/" rel="tag">typedef</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">位运算与位运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" rel="tag">原码·反码·补码</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">复合赋值运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" rel="tag">寄存器编程</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" rel="tag">按键输入</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" rel="tag">结构体</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" rel="tag">编程入门</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" rel="tag">编程笔记</a></li></ul>
     </div>
   </div>
 
@@ -847,7 +925,7 @@ return 0;
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/C%E8%AF%AD%E8%A8%80/" style="font-size: 20px;">C语言</a> <a href="/tags/F407/" style="font-size: 20px;">F407</a> <a href="/tags/GPIO/" style="font-size: 20px;">GPIO</a> <a href="/tags/STM32/" style="font-size: 20px;">STM32</a> <a href="/tags/scanf/" style="font-size: 10px;">scanf</a> <a href="/tags/typedef/" style="font-size: 10px;">typedef</a> <a href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">位运算与位运算符</a> <a href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" style="font-size: 10px;">原码·反码·补码</a> <a href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">复合赋值运算符</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 16.67px;">寄存器</a> <a href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" style="font-size: 20px;">库函数</a> <a href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" style="font-size: 10px;">按键输入</a> <a href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" style="font-size: 10px;">结构体</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" style="font-size: 13.33px;">编程入门</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" style="font-size: 13.33px;">编程笔记</a>
+      <a href="/tags/C%E8%AF%AD%E8%A8%80/" style="font-size: 20px;">C语言</a> <a href="/tags/F407/" style="font-size: 20px;">F407</a> <a href="/tags/GPIO/" style="font-size: 17.5px;">GPIO</a> <a href="/tags/STM32/" style="font-size: 20px;">STM32</a> <a href="/tags/scanf/" style="font-size: 10px;">scanf</a> <a href="/tags/typedef/" style="font-size: 10px;">typedef</a> <a href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">位运算与位运算符</a> <a href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" style="font-size: 10px;">原码·反码·补码</a> <a href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">复合赋值运算符</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 15px;">寄存器</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" style="font-size: 10px;">寄存器编程</a> <a href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" style="font-size: 17.5px;">库函数</a> <a href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" style="font-size: 10px;">按键输入</a> <a href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" style="font-size: 10px;">结构体</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" style="font-size: 12.5px;">编程入门</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" style="font-size: 12.5px;">编程笔记</a>
     </div>
   </div>
 
@@ -869,6 +947,10 @@ return 0;
       <ul>
         
           <li>
+            <a href="/2026/07/24/STM32F407%E5%B8%A6%E4%BD%8D%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/">STM32F407带位操作总结</a>
+          </li>
+        
+          <li>
             <a href="/2026/07/23/GPIO%E6%8C%89%E9%94%AE%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%93%8D%E6%80%BB%E7%BB%93/">GPIO按键检测实操总结</a>
           </li>
         
@@ -882,10 +964,6 @@ return 0;
         
           <li>
             <a href="/2026/07/20/C%E8%AF%AD%E8%A8%80%E8%BF%90%E7%AE%97%E7%9F%A5%E8%AF%86/">C语言运算知识</a>
-          </li>
-        
-          <li>
-            <a href="/2026/07/19/%E6%89%8B%E5%8A%A8%E6%90%AD%E5%BB%BAGPIO%E5%87%BD%E6%95%B0%E5%BA%93%E5%87%BD%E6%95%B0%E9%9B%8F%E5%BD%A2/">手动搭建GPIO函数库函数雏形.1</a>
           </li>
         
       </ul>
