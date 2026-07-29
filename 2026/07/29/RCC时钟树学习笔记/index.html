@@ -4,20 +4,23 @@
   <meta charset="utf-8">
   
   
-  <title>change-first-blog | Hexo</title>
+  <title>RCC时钟树学习笔记 | Hexo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta name="description" content="大家好，我是郑家伟本文目标搭建个人Hexo博客，长期记录整理完整的C语言学习笔记，方便复习查阅。 后续规划 持续更新C语言基础语法、指针、结构体知识点 补充单片机、底层开发相关实操代码 记录编程踩坑问题与解决方案">
+  <meta name="description" content="STM32F407 RCC+时钟树一、基础概念  RCC全称：复位和时钟控制器（Reset &amp; Clock Control）作用：掌管芯片所有时钟开启、频率升降、总线分频、外设时钟开关，相当于整个单片机的总电源+调速开关；所有外设（GPIO、定时器、串口）必须开启时钟才能工作 时钟树：时钟从源头出发，经过分频、倍频、逐级分流，流向CPU、各类总线、外设的完整流向结构图  二、5个原始时钟源">
 <meta property="og:type" content="article">
-<meta property="og:title" content="change-first-blog">
-<meta property="og:url" content="http://example.com/2026/07/18/chenge-first-blog/index.html">
+<meta property="og:title" content="RCC时钟树学习笔记">
+<meta property="og:url" content="http://example.com/2026/07/29/RCC%E6%97%B6%E9%92%9F%E6%A0%91%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:description" content="大家好，我是郑家伟本文目标搭建个人Hexo博客，长期记录整理完整的C语言学习笔记，方便复习查阅。 后续规划 持续更新C语言基础语法、指针、结构体知识点 补充单片机、底层开发相关实操代码 记录编程踩坑问题与解决方案">
+<meta property="og:description" content="STM32F407 RCC+时钟树一、基础概念  RCC全称：复位和时钟控制器（Reset &amp; Clock Control）作用：掌管芯片所有时钟开启、频率升降、总线分频、外设时钟开关，相当于整个单片机的总电源+调速开关；所有外设（GPIO、定时器、串口）必须开启时钟才能工作 时钟树：时钟从源头出发，经过分频、倍频、逐级分流，流向CPU、各类总线、外设的完整流向结构图  二、5个原始时钟源">
 <meta property="og:locale" content="en_US">
-<meta property="article:published_time" content="2026-07-18T09:06:47.000Z">
-<meta property="article:modified_time" content="2026-07-19T13:57:28.080Z">
+<meta property="article:published_time" content="2026-07-29T07:37:40.000Z">
+<meta property="article:modified_time" content="2026-07-29T08:35:10.931Z">
 <meta property="article:author" content="John Doe">
-<meta property="article:tag" content="C语言">
-<meta property="article:tag" content="编程笔记">
+<meta property="article:tag" content="F407">
+<meta property="article:tag" content="MCO">
+<meta property="article:tag" content="RCC">
+<meta property="article:tag" content="STM32">
+<meta property="article:tag" content="时钟">
 <meta name="twitter:card" content="summary">
   
     <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
@@ -75,14 +78,14 @@
 </header>
 
       <div class="outer">
-        <section id="main"><article id="post-chenge-first-blog" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+        <section id="main"><article id="post-RCC时钟树学习笔记" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
-    <a href="/2026/07/18/chenge-first-blog/" class="article-date">
-  <time class="dt-published" datetime="2026-07-18T09:06:47.000Z" itemprop="datePublished">2026-07-18</time>
+    <a href="/2026/07/29/RCC%E6%97%B6%E9%92%9F%E6%A0%91%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" class="article-date">
+  <time class="dt-published" datetime="2026-07-29T07:37:40.000Z" itemprop="datePublished">2026-07-29</time>
 </a>
     
   <div class="article-category">
-    <a class="article-category-link" href="/categories/%E4%BB%8B%E7%BB%8D/">介绍</a>
+    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>►<a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E8%AF%BE%E7%A8%8B%E6%80%BB%E7%BB%93/">课程总结</a>
   </div>
 
   </div>
@@ -93,7 +96,7 @@
         
   
     <h1 class="p-name article-title" itemprop="headline name">
-      change-first-blog
+      RCC时钟树学习笔记
     </h1>
   
 
@@ -101,21 +104,62 @@
     
     <div class="e-content article-entry" itemprop="articleBody">
       
-        <h1 id="大家好，我是郑家伟"><a href="#大家好，我是郑家伟" class="headerlink" title="大家好，我是郑家伟"></a>大家好，我是郑家伟</h1><h2 id="本文目标"><a href="#本文目标" class="headerlink" title="本文目标"></a>本文目标</h2><p>搭建个人Hexo博客，长期记录整理完整的C语言学习笔记，方便复习查阅。</p>
-<h2 id="后续规划"><a href="#后续规划" class="headerlink" title="后续规划"></a>后续规划</h2><ol>
-<li>持续更新C语言基础语法、指针、结构体知识点</li>
-<li>补充单片机、底层开发相关实操代码</li>
-<li>记录编程踩坑问题与解决方案</li>
+        <p>STM32F407 RCC+时钟树<br>一、基础概念</p>
+<ol>
+<li>RCC全称：复位和时钟控制器（Reset &amp; Clock Control）<br>作用：掌管芯片所有时钟开启、频率升降、总线分频、外设时钟开关，相当于整个单片机的总电源+调速开关；所有外设（GPIO、定时器、串口）必须开启时钟才能工作</li>
+<li>时钟树：时钟从源头出发，经过分频、倍频、逐级分流，流向CPU、各类总线、外设的完整流向结构图</li>
+</ol>
+<p>二、5个原始时钟源头（所有频率的根基）<br>高速时钟（给CPU、主系统用）</p>
+<ol>
+<li>HSI：内部高速RC时钟（16MHz）<br>上电默认时钟，芯片内部自带，不用外接晶振；缺点：精度差、温漂大<br>上电瞬间单片机先跑这个低速时钟，执行时钟初始化代码，切换到高精度HSE&#x2F;PLL</li>
+<li>HSE：外部高速晶振（标配8MHz）(范围4-26MHz)<br>开发板焊接外部石英晶振，精度极高、稳定；配置168MHz主频唯一首选源头<br>低速时钟（仅低功耗计时器件使用）</li>
+<li>LSE：外部32.768KHz晶振<br>专门给RTC实时时钟提供基准，断电靠纽扣电池走时间</li>
+<li>LSI：内部低速RC时钟（32KHz）<br>精度差，只给独立看门狗、待机唤醒使用</li>
+<li>双PLL锁相环（频率倍增核心模块）<br>• 主PLL（PLL）：你一直在配置的模块，把25MHz低频晶振拉升成168MHz高频系统时钟，同时分出48MHz固定时钟供给USB（必须严格48MHz才能识别U盘）<br>计算公式：SYSCLK &#x3D; (HSE ÷ M) × N ÷ P<br>经典参数：M&#x3D;25、N&#x3D;336、P&#x3D;2 → (8&#x2F;8)*336&#x2F;2 &#x3D; 168MHz；Q&#x3D;7专门算出48MHz给USB<br>• PLLI2S：音频专用锁相环，播放音乐用，日常点灯几乎用不到</li>
+</ol>
+<p>三、时钟主干完整流向<br>HSE(25MHz) → PLL分频倍频 → SYSCLK(168MHz系统总时钟) → 分成3路总线时钟</p>
+<ol>
+<li>SYSCLK：系统总时钟（最高168MHz）<br>整个芯片最高频率时钟，供给内核CPU、Flash存储器；可三选一来源：HSI &#x2F; HSE &#x2F; PLL输出（我们固定选PLL）</li>
+<li>三级总线分频（RCC-&gt;CFGR寄存器配置）<br>SYSCLK向下分频，分出3条马路，不同外设分配不同速度，兼顾性能+省电：</li>
+<li>HCLK（AHB总线时钟）<br>默认不分频：HCLK &#x3D; SYSCLK &#x3D; 168MHz<br>承载：CPU内核、DMA内存搬运、Flash、高速存储器、以太网等核心硬件，主干道全速跑</li>
+<li>PCLK2（APB2高速外设总线）<br>二分频：PCLK2 &#x3D; HCLK ÷ 2 &#x3D; 84MHz<br>承载：GPIO所有引脚、ADC、高级定时器、串口1等高速外设（LED引脚挂载在这里）<br>规则：APB2最大上限84MHz。</li>
+<li>PCLK1（APB1低速外设总线）<br>四分频：PCLK1 &#x3D; HCLK ÷ 4 &#x3D; 42MHz<br>承载：普通串口、I2C、基础定时器、看门狗等低速外设；上限最高42MHz。<br>补充规则：如果APB总线分频系数≥2，挂载上面的定时器时钟会自动翻倍，方便定时计算<br>四、外设时钟开关逻辑<br>每条总线下面挂载一堆外设，默认全部关闭时钟，必须通过RCC寄存器手动开启对应外设时钟，硬件才会通电工作：<br>例：开启GPIOA引脚时钟：RCC-&gt;AHB1ENR |&#x3D; RCC_AHB1ENR_GPIOAEN;<br>不开这句，LED引脚初始化完全无效，灯不会亮</li>
+</ol>
+<p>五、配套关键硬件设置（代码里的FLASH等待周期）<br>CPU高速读取Flash里的程序时，Flash硬件速度跟不上168MHz主频，需要设置等待周期（LATENCY）：<br>• 168MHz：必须配置5个等待周期<br>• 主频降低，等待周期同步减小，否则程序运行时序错乱、延时无变化</p>
+<p>六、上电完整启动流程（对应你的SetSysClock函数执行步骤）</p>
+<ol>
+<li>上电默认跑HSI内部16MHz低速时钟；</li>
+<li>开启外部HSE 25MHz晶振，等待晶振震荡稳定；</li>
+<li>配置PLL的M&#x2F;N&#x2F;P&#x2F;Q参数，算出168MHz主频+48MHz USB时钟；</li>
+<li>开启PLL，等待PLL倍频稳定就绪；</li>
+<li>设置Flash读写等待周期，适配当前主频；</li>
+<li>将系统时钟SYSCLK切换为PLL输出的168MHz；</li>
+<li>配置AHB、APB1、APB2总线分频比例；</li>
+<li>后续main函数里开启GPIO时钟、初始化引脚、点灯循环</li>
+</ol>
+<p>七、MCO是什么<br>MCO &#x3D; 单片机时钟输出引脚<br>芯片预留了专门引脚，可以把芯片内部看不见的各种时钟信号引到芯片外面</p>
+<p>八、输出监控系统时钟，拆开含义</p>
+<ol>
+<li>系统时钟（SYSCLK）：就是你用PLL配置的168MHz总主频，CPU运行的基准时钟，封在芯片内部，肉眼、万用表都测不到；</li>
+<li>输出：把SYSCLK信号接到MCO引脚上；</li>
+<li>监控：拿示波器接这个引脚，查看波形频率。</li>
+<li>作用（你现在最需要的）<br>一次次修改PLL的N数值、调整主频，心里没法确认：<br>单片机到底有没有真正跑到 168M &#x2F; 84M？<br>PLL有没有锁定成功？时钟配置写错有没有乱频？<br>开启MCO输出SYSCLK之后：<br>示波器测出多少赫兹，就代表当前单片机实际主频是多少，用来验证你的时钟代码是否正确</li>
+</ol>
+<p>九、F407实操细节</p>
+<ol>
+<li>选用 MCO2（PC9引脚），专门可以输出SYSCLK系统主时钟；</li>
+<li>注意限制：GPIO引脚最高承受100Mhz信号，168MHz超出上限，必须内部二分频输出；</li>
+<li>举例：<br>168MHz二分频输出 → 引脚测出来84MHz波形，就证明系统时钟确实是168MHz，配置无误</li>
 </ol>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/18/chenge-first-blog/" data-id="cuidz0GDLH2QfPiR68nAvGctd" data-title="change-first-blog" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2026/07/29/RCC%E6%97%B6%E9%92%9F%E6%A0%91%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" data-id="cuid0hfcs7-An1puB7GRMFi8a" data-title="RCC时钟树学习笔记" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" rel="tag">编程笔记</a></li></ul>
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MCO/" rel="tag">MCO</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/RCC/" rel="tag">RCC</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%97%B6%E9%92%9F/" rel="tag">时钟</a></li></ul>
 
     </footer>
   </div>
@@ -123,19 +167,19 @@
     
 <nav id="article-nav">
   
-    <a href="/2026/07/18/C%E8%AF%AD%E8%A8%80%E7%BB%93%E6%9E%84%E4%BD%93%E7%AC%94%E8%AE%B0/" id="article-nav-newer" class="article-nav-link-wrap">
+    <a href="/2026/07/29/MCO%E8%BE%93%E5%87%BA%E7%9B%91%E6%8E%A7%E4%B8%BB%E9%A2%91/" id="article-nav-newer" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Newer</strong>
       <div class="article-nav-title">
         
-          C语言结构体笔记
+          依托 HSE/HSI 内部时钟配置系统时钟 + MCO输出监控主频
         
       </div>
     </a>
   
   
-    <a href="/2026/07/18/hello-world/" id="article-nav-older" class="article-nav-link-wrap">
+    <a href="/2026/07/24/STM32F407%E5%B8%A6%E4%BD%8D%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/" id="article-nav-older" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Older</strong>
-      <div class="article-nav-title">Hello World</div>
+      <div class="article-nav-title">STM32F407带位操作总结</div>
     </a>
   
 </nav>
