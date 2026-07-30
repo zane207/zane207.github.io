@@ -4,25 +4,23 @@
   <meta charset="utf-8">
   
   
-  <title>依托 HSE/HSI 内部时钟配置系统时钟 + MCO输出监控主频 | Hexo</title>
+  <title>systick系统滴答定时器操作总结 | Hexo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta name="description" content="HSE配置系统时钟 + MCO输出监控SYSCLK整体逻辑顺序以外部25MHz高速晶振HSE作为时钟源头 → 通过PLL锁相环倍频生成168MHz系统时钟SYSCLK → 配置MCO引脚，将SYSCLK时钟信号引出芯片外部 → 借助示波器测量引脚频率，校验主频配置是否准确无误分步拆解全过程 第一步：初始化准备，单片机初始状态单片机上电默认依靠HSI内部16MHz时钟运行，此时尚未启用外部晶振、PL">
+  <meta name="description" content="一、基础概念1、全称SysTick &#x3D; System Tick Timer 系统滴答定时器2、归属ARM Cortex-M3&#x2F;M4 内核自带定时器，不属于ST公司外设，所有STM32单片机通用3、核心用处  精准毫秒级软件延时不用依靠循环空耗时间，定时标准，不受主频改动影响； 嵌入式操作系统（FreeRTOS&#x2F;UCOS）心跳时钟节拍（暂时不用）4、工作原理递减计数器：">
 <meta property="og:type" content="article">
-<meta property="og:title" content="依托 HSE&#x2F;HSI 内部时钟配置系统时钟 + MCO输出监控主频">
-<meta property="og:url" content="http://example.com/2026/07/29/MCO%E8%BE%93%E5%87%BA%E7%9B%91%E6%8E%A7%E4%B8%BB%E9%A2%91/index.html">
+<meta property="og:title" content="systick系统滴答定时器操作总结">
+<meta property="og:url" content="http://example.com/2026/07/30/%E7%B3%BB%E7%BB%9F%E6%BB%B4%E7%AD%94%E5%AE%9A%E6%97%B6%E5%99%A8%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:description" content="HSE配置系统时钟 + MCO输出监控SYSCLK整体逻辑顺序以外部25MHz高速晶振HSE作为时钟源头 → 通过PLL锁相环倍频生成168MHz系统时钟SYSCLK → 配置MCO引脚，将SYSCLK时钟信号引出芯片外部 → 借助示波器测量引脚频率，校验主频配置是否准确无误分步拆解全过程 第一步：初始化准备，单片机初始状态单片机上电默认依靠HSI内部16MHz时钟运行，此时尚未启用外部晶振、PL">
+<meta property="og:description" content="一、基础概念1、全称SysTick &#x3D; System Tick Timer 系统滴答定时器2、归属ARM Cortex-M3&#x2F;M4 内核自带定时器，不属于ST公司外设，所有STM32单片机通用3、核心用处  精准毫秒级软件延时不用依靠循环空耗时间，定时标准，不受主频改动影响； 嵌入式操作系统（FreeRTOS&#x2F;UCOS）心跳时钟节拍（暂时不用）4、工作原理递减计数器：">
 <meta property="og:locale" content="en_US">
-<meta property="article:published_time" content="2026-07-29T08:37:54.000Z">
-<meta property="article:modified_time" content="2026-07-29T08:51:25.875Z">
+<meta property="article:published_time" content="2026-07-30T10:25:24.000Z">
+<meta property="article:modified_time" content="2026-07-30T10:41:38.543Z">
 <meta property="article:author" content="John Doe">
 <meta property="article:tag" content="F407">
-<meta property="article:tag" content="HSE">
-<meta property="article:tag" content="HSI">
-<meta property="article:tag" content="MCO">
-<meta property="article:tag" content="RCC">
 <meta property="article:tag" content="STM32">
-<meta property="article:tag" content="时钟">
+<meta property="article:tag" content="systick">
+<meta property="article:tag" content="内核定时器">
+<meta property="article:tag" content="毫秒延时">
 <meta name="twitter:card" content="summary">
   
     <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
@@ -80,10 +78,10 @@
 </header>
 
       <div class="outer">
-        <section id="main"><article id="post-MCO输出监控主频" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+        <section id="main"><article id="post-系统滴答定时器操作总结" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
-    <a href="/2026/07/29/MCO%E8%BE%93%E5%87%BA%E7%9B%91%E6%8E%A7%E4%B8%BB%E9%A2%91/" class="article-date">
-  <time class="dt-published" datetime="2026-07-29T08:37:54.000Z" itemprop="datePublished">2026-07-29</time>
+    <a href="/2026/07/30/%E7%B3%BB%E7%BB%9F%E6%BB%B4%E7%AD%94%E5%AE%9A%E6%97%B6%E5%99%A8%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/" class="article-date">
+  <time class="dt-published" datetime="2026-07-30T10:25:24.000Z" itemprop="datePublished">2026-07-30</time>
 </a>
     
   <div class="article-category">
@@ -98,7 +96,7 @@
         
   
     <h1 class="p-name article-title" itemprop="headline name">
-      依托 HSE/HSI 内部时钟配置系统时钟 + MCO输出监控主频
+      systick系统滴答定时器操作总结
     </h1>
   
 
@@ -106,59 +104,89 @@
     
     <div class="e-content article-entry" itemprop="articleBody">
       
-        <p>HSE配置系统时钟 + MCO输出监控SYSCLK<br>整体逻辑顺序<br>以外部25MHz高速晶振HSE作为时钟源头 → 通过PLL锁相环倍频生成168MHz系统时钟SYSCLK → 配置MCO引脚，将SYSCLK时钟信号引出芯片外部 → 借助示波器测量引脚频率，校验主频配置是否准确无误<br>分步拆解全过程</p>
-<p>第一步：初始化准备，单片机初始状态<br>单片机上电默认依靠HSI内部16MHz时钟运行，此时尚未启用外部晶振、PLL未开启，主频低速，所有时钟配置寄存器处于上电默认值</p>
-<p>第二步：开启并稳定外部高速晶振 HSE</p>
+        <p>一、基础概念<br>1、全称<br>SysTick &#x3D; System Tick Timer 系统滴答定时器<br>2、归属<br>ARM Cortex-M3&#x2F;M4 内核自带定时器，不属于ST公司外设，所有STM32单片机通用<br>3、核心用处</p>
 <ol>
-<li>打开RCC寄存器，使能HSE外部25MHz晶振电路；</li>
-<li>循环等待硬件标志位，直至HSE震荡稳定、输出标准25MHz时钟；<br>作用：选用精度最高的外部晶振，作为PLL倍频的基准输入时钟</li>
+<li>精准毫秒级软件延时<br>不用依靠循环空耗时间，定时标准，不受主频改动影响；</li>
+<li>嵌入式操作系统（FreeRTOS&#x2F;UCOS）心跳时钟节拍（暂时不用）<br>4、工作原理<br>递减计数器：装入初值 → 每个时钟周期数字-1<br>数字减到0：触发定时器中断 &#x2F; 置位标志位；自动重装初值，循环倒计时<br>5、时钟来源（F407两种可选）</li>
+<li>HCLK&#x2F;8：系统时钟8分频（推荐，稳定）</li>
+<li>HCLK：等于系统主频</li>
 </ol>
-<p>第三步：配置PLL锁相环全套分频、倍频参数<br>套用公式：SYSCLK&#x3D;\frac{HSE}{M}×\frac{N}{P}<br>经典固定参数：M&#x3D;25、N&#x3D;336、P&#x3D;2、Q&#x3D;7</p>
+<p>二、SysTick 4个核心寄存器<br>地址全部是内核固定地址，所有Cortex-M内核一致</p>
 <ol>
-<li>写入PLL配置寄存器，设定分频M、倍频N、主时钟分频P、USB专用分频Q；</li>
-<li>最终算出：系统主频168MHz，同步产出48MHz标准时钟供给USB外设；</li>
-<li>开启PLL模块，等待PLL锁定标志位置1，代表倍频频率稳定输出</li>
+<li>STK_CTRL：控制状态寄存器（最重要）<br>位   功能<br>bit0 计数器使能：1&#x3D;开启倒计时，0&#x3D;关闭<br>bit1 中断使能：1&#x3D;倒计时到0触发中断；0&#x3D;只置标志位，不进中断<br>bit2 时钟源选择：0&#x3D;HCLK&#x2F;8  1&#x3D;HCLK<br>bit16 计数完成标志位：倒计时归0硬件置1，读取自动清零 </li>
+<li>STK_LOAD：重载初值寄存器<br>写入倒计时初始数值，倒计时到0自动加载里面的数字，循环计时<br>最大值：2²⁴-1 &#x3D; 16777215</li>
+<li>STK_VAL：当前计数值寄存器<br>实时存放正在递减的数字，可读；写入任意数会立刻清空计数器</li>
+<li>STK_CALIB：校准寄存器<br>初学基本不用。<br>寄存器地址宏定义：</li>
 </ol>
-<p>第四步：配置FLASH读写等待周期<br>168MHz属于高频主频，Flash存储器读取速度跟不上CPU运行速度，必须设置5个等待周期；主频更改时，该参数需要同步修改，避免程序运行时序错乱。</p>
-<p>第五步：切换系统时钟源为PLL输出时钟<br>修改时钟切换寄存器，将芯片全局系统时钟SYSCLK，从默认的HSI切换为PLL生成的168MHz高频时钟；自此单片机整体正式以168MHz全速运行</p>
-<p>第六步：配置AHB、APB1、APB2三级总线分频<br>• AHB总线：不分频，HCLK &#x3D; 168MHz<br>• APB2高速外设总线：二分频，PCLK2 &#x3D; 84MHz<br>• APB1低速外设总线：四分频，PCLK1 &#x3D; 42MHz<br>给不同外设分配适配的运行时钟，兼顾运行性能与功耗</p>
-<p>第七步：配置MCO引脚，引出系统时钟用于监控</p>
+<p>#define SysTick_BASE        0xE000E010<br>#define STK_CTRL   *(volatile unsigned int *)(SysTick_BASE + 0x00)<br>#define STK_LOAD   *(volatile unsigned int *)(SysTick_BASE + 0x04)<br>#define STK_VAL    *(volatile unsigned int *)(SysTick_BASE + 0x08)<br>#define STK_CALIB  *(volatile unsigned int *)(SysTick_BASE + 0x0C)</p>
+<p>三、模式1：阻塞延时<br>需求：写一个 void delay_ms(uint32_t ms) 毫秒延时函数<br>前提：系统主频 SYSCLK &#x3D; 168MHz，时钟源选择 HCLK&#x2F;8<br>时钟节拍频率 &#x3D; 168M &#x2F; 8 &#x3D; 21MHz<br>每1us需要计数：21个脉冲<br>每1ms &#x3D; 1000us → 需要计数：21000 次</p>
+<p>步骤1：配置时钟源<br>设置 SysTick 时钟来源为 HCLK八分频，不使用全速时钟<br>STK_CTRL &amp;&#x3D; ~(1 &lt;&lt; 2);<br>步骤2：关闭SysTick内部中断<br>只读取计时完成标志位，倒计时结束不触发中断<br>STK_CTRL &amp;&#x3D; ~(1 &lt;&lt; 1);<br>步骤3：装载1ms计数初值到LOAD寄存器<br>把1毫秒需要递减的数字写入重载寄存器<br>STK_LOAD &#x3D; 21000;<br>步骤4：延时循环逻辑（单次毫秒延时流程）</p>
 <ol>
-<li>选用MCO2（PC9引脚），该通道支持输出SYSCLK系统主频；</li>
-<li>将PC9引脚模式设置为复用功能（MCO时钟输出专属模式）；</li>
-<li>配置MCO寄存器：选择时钟源为SYSCLK，设置二分频输出；<br>原因：GPIO引脚最高仅支持100MHz信号，168MHz无法直接输出，二分频后引脚输出84MHz波形</li>
+<li>清空当前计数器 VAL，重置倒计时</li>
+<li>打开定时器开关，开始递减计数</li>
+<li>循环等待 bit16 计时完成标志置1</li>
+<li>计时完毕，关闭定时器<br>STK_VAL &#x3D; 0;<br>STK_CTRL |&#x3D; (1 &lt;&lt; 0);<br>while( !(STK_CTRL &amp; (1 &lt;&lt; 16)) );<br>STK_CTRL &amp;&#x3D; ~(1 &lt;&lt; 0);<br>完整代码+逐行解析<br>&#x2F;&#x2F; 初始化SysTick，配置时钟源<br>void SysTick_Init(void)<br>{<br> &#x2F;&#x2F; bit2 &#x3D; 0  时钟源：HCLK&#x2F;8<br> STK_CTRL &amp;&#x3D; ~(1 &lt;&lt; 2);<br> &#x2F;&#x2F; 关闭中断 bit1&#x3D;0：只查询标志位，不触发中断<br> STK_CTRL &amp;&#x3D; ~(1 &lt;&lt; 1);<br> &#x2F;&#x2F; 关闭计数器<br> STK_CTRL &amp;&#x3D; ~(1 &lt;&lt; 0);<br>}</li>
 </ol>
-<p>第八步：硬件测量、校验时钟（监控环节）<br>示波器探头接PC9引脚与GND，读取波形频率：<br>测出频率&#x3D;84MHz → 证明内部SYSCLK真实为168MHz，整套HSE+PLL时钟配置完全正确；<br>若频率不符，说明PLL参数、时钟切换代码存在错误</p>
-<p>依托 HSI 内部时钟配置系统时钟 + MCO输出监控主频<br>整体流程逻辑<br>无需外接晶振，以芯片内部高速RCC时钟HSI（出厂固定16MHz）作为时钟基准 → 送入PLL锁相环倍频，生成目标系统时钟SYSCLK → 配置MCO引脚引出系统主频 → 示波器采集波形，核对实际主频是否和计算值一致，完成时钟校验<br>逐阶段分步详解</p>
-<p>1、上电初始状态<br>单片机刚上电，默认自动启用 HSI 16MHz 运行，这是出厂默认配置：<br>没有开启外部HSE晶振，PLL处于关闭状态，内核低速运行，等待我们重新配置整套时钟参数</p>
-<p>2、无需开启外部晶振，直接使用HSI当作PLL输入源<br>和HSE方案最大区别：<br>HSI是芯片内部集成的RCC振荡电路，不用焊接外部8M晶振、不用等待外部晶体起振稳定，省去HSE开启、等待就绪步骤<br>缺点：温度变化、电压波动会让16MHz频率轻微偏移，时钟精度远不如外部石英晶振</p>
-<p>3、配置PLL分频倍频参数（公式通用）<br>计算公式依旧：\boldsymbol{SYSCLK&#x3D;\dfrac{输入时钟}{M} × \dfrac{N}{P}}<br>输入基准时钟 &#x3D; HSI &#x3D; 16MHz<br>依旧沿用适配USB的经典配套参数：M&#x3D;8，N&#x3D;336，P&#x3D;2，Q&#x3D;7<br>代入计算：<br>16÷8 × 336 ÷ 2 &#x3D; 336MHz<br>注意：F407最大允许主频只有168MHz，该参数超标，因此要缩小N值，举例合规配置：<br>N&#x3D;168：16&#x2F;8 * 168&#x2F;2 &#x3D; 168MHz（芯片额定最高主频）<br>同时 Q&#x3D;7 分频后依旧输出48MHz时钟，满足USB设备时钟要求<br>参数写入寄存器后，开启PLL，循环等待锁定标志位，直到PLL倍频输出频率稳定</p>
-<p>4、配置Flash访问等待周期<br>主频168MHz高频运行，Flash读取速度跟不上CPU，固定配置：5个等待周期（5WS）<br>如果降低主频运行，等待周期数值同步下调，防止程序时序紊乱、软件延时失效</p>
-<p>5、切换系统时钟源为PLL输出时钟<br>修改RCC时钟配置寄存器，把全局系统时钟SYSCLK，从原生默认的HSI，切换成PLL倍频后的168MHz时钟<br>自此单片机整体内核、总线全部按照新主频运行。</p>
-<p>6、配置AHB、APB1、APB2总线分频（和HSE方案完全一致）<br>• AHB(HCLK)：不分频 &#x3D; 168MHz<br>• APB2(高速外设)：2分频 &#x3D; 84MHz<br>• APB1(低速外设)：4分频 &#x3D; 42MHz<br>分级给各类外设分配时钟，平衡性能和功耗</p>
-<p>7、配置MCO2（PC9）引脚，输出系统时钟用于监控校验</p>
+<p>&#x2F;&#x2F; ms：要延时多少毫秒<br>void delay_ms(uint32_t ms)<br>{<br>    uint32_t i;<br>    &#x2F;&#x2F; 1ms需要计数21000次<br>    STK_LOAD &#x3D; 21000;<br>    for(i &#x3D; 0; i &lt; ms; i++)<br>    {<br>        STK_VAL &#x3D; 0x00;        &#x2F;&#x2F; 清空当前计数器，立刻重新开始倒计时<br>        STK_CTRL |&#x3D; (1 &lt;&lt; 0);  &#x2F;&#x2F; 开启SysTick计数器</p>
+<pre><code>    // 循环等待：bit16计数完成标志置1（倒计时结束）
+    while( !(STK_CTRL &amp; (1 &lt;&lt; 16)) );
+
+    STK_CTRL &amp;= ~(1 &lt;&lt; 0); // 关闭计数器
+}
+</code></pre>
+<p>}</p>
+<p>总结</p>
 <ol>
-<li>开启GPIOC端口时钟，将PC9设置为复用功能模式（MCO时钟输出复用引脚）；</li>
-<li>MCO寄存器选择时钟来源：SYSCLK系统主时钟；</li>
-<li>配置二分频输出：GPIO引脚最高承载100MHz信号，168MHz无法直接输出，二分频后向外输出84MHz方波</li>
+<li>STK_CTRL &amp;&#x3D; ~(1 &lt;&lt; 2);<br>时钟源选为 168M&#x2F;8&#x3D;21MHz，延时最标准通用。</li>
+<li>STK_CTRL &amp;&#x3D; ~(1 &lt;&lt; 1);<br>关闭中断：我们不用进中断服务函数，全程读取标志位等待即可。</li>
+<li>STK_LOAD &#x3D; 21000;<br>装入1毫秒对应的计数数值，每次倒计时跑完刚好1ms。</li>
+<li>STK_VAL &#x3D; 0x00;<br>清空当前剩余计数值，强制从头开始倒计时。</li>
+<li>STK_CTRL |&#x3D; (1 &lt;&lt; 0);<br>打开定时器，开始递减计数。</li>
+<li>while( !(STK_CTRL &amp; (1 &lt;&lt; 16)) );<br>死循环等待，直到倒计时完毕硬件把bit16置1；读取该位后硬件自动清零标志。</li>
+<li>一轮循环走完 &#x3D; 精准1毫秒。</li>
 </ol>
-<p>8、示波器测量校验（监控过程）<br>示波器表笔接PC9引脚和板子GND：<br>实测波形频率 &#x3D; 84MHz，即可证明：<br>以HSI为源头的整套PLL时钟配置生效，单片机内部准确运行在168MHz主频</p>
-<p>HSI方案对比HSE方案核心差异</p>
+<p>调用示例<br>int main(void)<br>{<br>    SysTick_Init();<br>    GPIO_LED_Init(); &#x2F;&#x2F; LED初始化</p>
+<pre><code>while(1)
+{
+    LED = 1;
+    delay_ms(500);  // 亮500ms
+    LED = 0;
+    delay_ms(500);  // 灭500ms
+}
+</code></pre>
+<p>}</p>
+<p>四、模式2：中断方式（定时周期性触发中断）<br>每隔500ms进一次中断，翻转LED，不需要主循环空等待<br>步骤1：选择时钟源 HCLK&#x2F;8<br>STK_CTRL &amp;&#x3D; ~(1 &lt;&lt; 2);<br>步骤2：写入定时总计数（例：500ms定时）<br>STK_LOAD &#x3D; 21000 * 500;<br>步骤3：清空当前计数器VAL<br>STK_VAL &#x3D; 0;<br>步骤4：开启溢出中断（倒计时归0触发中断）<br>STK_CTRL |&#x3D; (1 &lt;&lt; 1);<br>步骤5：打开定时器总开关，开始循环倒计时<br>STK_CTRL |&#x3D; (1 &lt;&lt; 0);<br>配套：固定名称中断服务函数<br>void SysTick_Handler(void)<br>{<br>    LED &#x3D; !LED;  &#x2F;&#x2F;定时时间到执行任务<br>}<br>完整代码<br>&#x2F;&#x2F; SysTick初始化：开启中断模式<br>void SysTick_Init(void)<br>{<br>    STK_CTRL &amp;&#x3D; ~(1 &lt;&lt; 2);  &#x2F;&#x2F; 时钟源 168M&#x2F;8 &#x3D;21MHz<br>    STK_LOAD &#x3D; 21000 * 500; &#x2F;&#x2F; 500ms重载值<br>    STK_VAL &#x3D; 0;<br>    STK_CTRL |&#x3D; (1 &lt;&lt; 1);   &#x2F;&#x2F; bit1置1：倒计时到0触发中断<br>    STK_CTRL |&#x3D; (1 &lt;&lt; 0);   &#x2F;&#x2F; 开启计数器<br>}</p>
+<p>&#x2F;&#x2F; SysTick中断服务函数：函数名固定不可修改<br>void SysTick_Handler(void)<br>{<br>    LED &#x3D; !LED; &#x2F;&#x2F; 每500ms翻转LED电平<br>}</p>
+<p>代码讲解</p>
 <ol>
-<li>优点：脱离外部晶振也可正常配置高频时钟，硬件极简，适合低成本、对时间精度要求不高的场景；</li>
-<li>缺点：时钟精度差、温漂大，长时间运行频率会偏移，不适合串口通信、RTC计时、USB稳定通信场景；</li>
-<li>通用点：PLL计算公式、总线分配、Flash等待周期、MCO输出监控步骤完全相同</li>
+<li>STK_CTRL |&#x3D; (1 &lt;&lt; 1);<br>开启中断：倒计时归0后，自动向NVIC发送中断请求，CPU跳转中断函数</li>
+<li>STK_LOAD &#x3D; 21000 * 500;<br>装载500ms计数值，倒计时结束自动重装数值，永久循环定时</li>
+<li>中断服务函数名固定：SysTick_Handler，内核预设好的</li>
+<li>无需手动清除标志位：SysTick中断硬件自动清零挂起标志，不用像EXTI那样手动写寄存器<br>NVIC配置补充（SysTick属于内核中断，无需我们手动配置NVIC）<br>SysTick、内核异常中断由ARM内核自动管理优先级，不需要操作NVIC寄存器</li>
 </ol>
-<p>一句话精简总结<br>以芯片内部16MHz高速RC时钟HSI为基准，经过PLL锁相环倍频得到168MHz系统主频，再通过MCO引脚将时钟信号导出芯片，借助示波器测量频率，验证整套内部时钟配置是否正确</p>
+<p>五、两种使用方式区别</p>
+<ol>
+<li>查询延时（阻塞）<br>主程序卡在while等待，CPU啥事干不了；适合简单点灯延时，初学首选</li>
+<li>中断定时<br>CPU主循环可以运行其他任务，时间到自动打断程序翻转LED，实时性更强</li>
+</ol>
+<p>六、关键知识点总结</p>
+<ol>
+<li>SysTick 是内核自带24位递减定时器，所有STM32通用；</li>
+<li>两大用途：毫秒延时、操作系统时基；</li>
+<li>查询方式：读取CTRL寄存器bit16判断计时完成；</li>
+<li>中断方式：开启bit1，倒计时溢出自动进入中断服务函数；</li>
+<li>时钟源默认选HCLK8分频，延时最精准稳定</li>
+</ol>
+<p>七、通俗比喻<br>SysTick 就是一个倒计时秒表：<br>设定好倒计时时间 → 按下开始 → 数字一直往下减<br>数字归零：要么提醒你时间到（查询标志），要么直接喊你过来办事（触发中断）</p>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/29/MCO%E8%BE%93%E5%87%BA%E7%9B%91%E6%8E%A7%E4%B8%BB%E9%A2%91/" data-id="cuidHaiOADURgm0qPkx9qp_SJ" data-title="依托 HSE/HSI 内部时钟配置系统时钟 + MCO输出监控主频" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2026/07/30/%E7%B3%BB%E7%BB%9F%E6%BB%B4%E7%AD%94%E5%AE%9A%E6%97%B6%E5%99%A8%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/" data-id="cuidnWMWp6N9fUeX75fQpEbW8" data-title="systick系统滴答定时器操作总结" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/HSE/" rel="tag">HSE</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/HSI/" rel="tag">HSI</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MCO/" rel="tag">MCO</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/RCC/" rel="tag">RCC</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%97%B6%E9%92%9F/" rel="tag">时钟</a></li></ul>
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/systick/" rel="tag">systick</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%86%85%E6%A0%B8%E5%AE%9A%E6%97%B6%E5%99%A8/" rel="tag">内核定时器</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%AF%AB%E7%A7%92%E5%BB%B6%E6%97%B6/" rel="tag">毫秒延时</a></li></ul>
 
     </footer>
   </div>
@@ -166,19 +194,10 @@
     
 <nav id="article-nav">
   
-    <a href="/2026/07/30/%E4%B8%AD%E6%96%AD%E6%A6%82%E5%BF%B5%E7%AC%94%E8%AE%B0/" id="article-nav-newer" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">Newer</strong>
-      <div class="article-nav-title">
-        
-          中断概念笔记
-        
-      </div>
-    </a>
   
-  
-    <a href="/2026/07/29/RCC%E6%97%B6%E9%92%9F%E6%A0%91%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" id="article-nav-older" class="article-nav-link-wrap">
+    <a href="/2026/07/30/EXTI%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD%E6%8E%A7%E5%88%B6%E5%99%A8%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/" id="article-nav-older" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Older</strong>
-      <div class="article-nav-title">RCC时钟树学习笔记</div>
+      <div class="article-nav-title">EXTI外部中断控制器操作总结</div>
     </a>
   
 </nav>

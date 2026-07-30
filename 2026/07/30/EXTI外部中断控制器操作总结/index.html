@@ -4,21 +4,23 @@
   <meta charset="utf-8">
   
   
-  <title>C语言结构体笔记 | Hexo</title>
+  <title>EXTI外部中断控制器操作总结 | Hexo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta name="description" content="#关于结构体一、结构体是干嘛的？ 普通变量只能存单个数据：int年龄、char姓名、float分数。结构体 &#x3D; 自己造一个复合盒子，把同一个人的多种信息打包放一起。比如学生：姓名、年龄、分数、班级，全部塞进一个结构体。 二、结构体的定义 struct:释义： （名词）结构；结构体；构架；组织；体系 （动词）使形成体系；struct结构体类型名{    数据类型 成员名;    数据类型">
+  <meta name="description" content="一、EXTI基础核心概念  全称：External Interrupt&#x2F;Event Controller 外部中断与事件控制器 作用：持续监控GPIO引脚电平变化，电平跳变后产生信号，交给NVIC内核触发中断 两条工作模式◦ 中断模式（我们在用）：电平变化→申请中断→CPU停下主程序处理事务◦ 事件模式：仅输出硬件脉冲，不打扰CPU，初学不用 硬件搭配：EXTI必须依靠 SYSCFG模块">
 <meta property="og:type" content="article">
-<meta property="og:title" content="C语言结构体笔记">
-<meta property="og:url" content="http://example.com/2026/07/18/C%E8%AF%AD%E8%A8%80%E7%BB%93%E6%9E%84%E4%BD%93%E7%AC%94%E8%AE%B0/index.html">
+<meta property="og:title" content="EXTI外部中断控制器操作总结">
+<meta property="og:url" content="http://example.com/2026/07/30/EXTI%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD%E6%8E%A7%E5%88%B6%E5%99%A8%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:description" content="#关于结构体一、结构体是干嘛的？ 普通变量只能存单个数据：int年龄、char姓名、float分数。结构体 &#x3D; 自己造一个复合盒子，把同一个人的多种信息打包放一起。比如学生：姓名、年龄、分数、班级，全部塞进一个结构体。 二、结构体的定义 struct:释义： （名词）结构；结构体；构架；组织；体系 （动词）使形成体系；struct结构体类型名{    数据类型 成员名;    数据类型">
+<meta property="og:description" content="一、EXTI基础核心概念  全称：External Interrupt&#x2F;Event Controller 外部中断与事件控制器 作用：持续监控GPIO引脚电平变化，电平跳变后产生信号，交给NVIC内核触发中断 两条工作模式◦ 中断模式（我们在用）：电平变化→申请中断→CPU停下主程序处理事务◦ 事件模式：仅输出硬件脉冲，不打扰CPU，初学不用 硬件搭配：EXTI必须依靠 SYSCFG模块">
 <meta property="og:locale" content="en_US">
-<meta property="article:published_time" content="2026-07-18T14:53:00.000Z">
-<meta property="article:modified_time" content="2026-07-18T15:02:12.951Z">
+<meta property="article:published_time" content="2026-07-30T10:13:35.000Z">
+<meta property="article:modified_time" content="2026-07-30T10:24:09.106Z">
 <meta property="article:author" content="John Doe">
-<meta property="article:tag" content="C语言">
-<meta property="article:tag" content="结构体">
-<meta property="article:tag" content="编程笔记">
+<meta property="article:tag" content="EXTI">
+<meta property="article:tag" content="F407">
+<meta property="article:tag" content="NVIC">
+<meta property="article:tag" content="STM32">
+<meta property="article:tag" content="外部中断">
 <meta name="twitter:card" content="summary">
   
     <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
@@ -76,14 +78,14 @@
 </header>
 
       <div class="outer">
-        <section id="main"><article id="post-C语言结构体笔记" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+        <section id="main"><article id="post-EXTI外部中断控制器操作总结" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
-    <a href="/2026/07/18/C%E8%AF%AD%E8%A8%80%E7%BB%93%E6%9E%84%E4%BD%93%E7%AC%94%E8%AE%B0/" class="article-date">
-  <time class="dt-published" datetime="2026-07-18T14:53:00.000Z" itemprop="datePublished">2026-07-18</time>
+    <a href="/2026/07/30/EXTI%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD%E6%8E%A7%E5%88%B6%E5%99%A8%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/" class="article-date">
+  <time class="dt-published" datetime="2026-07-30T10:13:35.000Z" itemprop="datePublished">2026-07-30</time>
 </a>
     
   <div class="article-category">
-    <a class="article-category-link" href="/categories/%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0/">编程学习</a>►<a class="article-category-link" href="/categories/%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0/C%E8%AF%AD%E8%A8%80%E5%9F%BA%E7%A1%80/">C语言基础</a>
+    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>►<a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E8%AF%BE%E7%A8%8B%E6%80%BB%E7%BB%93/">课程总结</a>
   </div>
 
   </div>
@@ -94,7 +96,7 @@
         
   
     <h1 class="p-name article-title" itemprop="headline name">
-      C语言结构体笔记
+      EXTI外部中断控制器操作总结
     </h1>
   
 
@@ -102,38 +104,89 @@
     
     <div class="e-content article-entry" itemprop="articleBody">
       
-        <p>#关于结构体<br>一、结构体是干嘛的？</p>
-<p>普通变量只能存单个数据：int年龄、char姓名、float分数。<br>结构体 &#x3D; 自己造一个复合盒子，把同一个人的多种信息打包放一起。<br>比如学生：姓名、年龄、分数、班级，全部塞进一个结构体。</p>
-<p>二、结构体的定义</p>
-<p>struct:释义： （名词）结构；结构体；构架；组织；体系 （动词）使形成体系；<br>struct结构体类型名<br>{<br>    数据类型 成员名;<br>    数据类型 成员名;<br>    ……<br>};<br>定义结构体的方法<br>1.先定义结构体类型，再定义结构体变量 （可定义局部或全局的结构体变量）<br>例：<br>struct Student<br>{<br>    char name[20];  &#x2F;&#x2F;姓名<br>    int age;        &#x2F;&#x2F;年龄<br>    float score;    &#x2F;&#x2F;成绩<br>}；</p>
-<p>struct Student s1,s2;（可定义多个变量）</p>
-<p>2.定义结构体的同时，定义结构体的变量  （可定义全局的结构体变量）<br>例：<br>struct Student<br>{<br>    char name[20];  &#x2F;&#x2F;姓名<br>    int age;        &#x2F;&#x2F;年龄<br>    float score;    &#x2F;&#x2F;成绩<br>}s3,s4;（可定义多个变量）</p>
-<p>3.定义无名结构体类型变量 （可定义全局的结构体变量）<br>例：<br>struct （这里没有Student了）<br>{<br>    char name[20];  &#x2F;&#x2F;姓名<br>    int age;        &#x2F;&#x2F;年龄<br>    float score;    &#x2F;&#x2F;成绩<br>}s5,s6;（可定义多个变量）</p>
-<p>三.结构体变量的初始化与赋值<br>struct Student<br>{<br>    char name[20];  &#x2F;&#x2F;姓名<br>    int age;        &#x2F;&#x2F;年龄<br>    float score;    &#x2F;&#x2F;成绩<br>}；<br>struct Student s1 &#x3D; { “Jane”,20,95.5};<br>struct Student s2 &#x3D; { “Jack,21,(没有的就显示为0)};</p>
-<p>struct Student<br>{<br>    char name[20];  &#x2F;&#x2F;姓名<br>    int age;        &#x2F;&#x2F;年龄<br>    float score;    &#x2F;&#x2F;成绩<br>}s3 &#x3D; {“Mike”,22,88};</p>
-<p>四.两个结构体变量之间可以相互赋值<br>struct Student s1 &#x3D; { “Jane”,20,95.5};<br>struct Student s2 &#x3D; { “Jack,21};<br>s2&#x3D;s1<br>则struct Student s2 &#x3D; { “Jane”,20,95.5};<br>struct Student s2&#x3D;s1和上述一样</p>
-<p>五.结构体成员的访问<br>#include&lt;stdio.h&gt;<br>#include&lt;string.h&gt;</p>
-<p>struct Student<br>{<br>    char name[20];<br>    int age;<br>    float score;<br>};<br>struct Class （结构体的嵌套）<br>{<br>    char ClassName[20];<br>    struct  Student leader;<br>};<br>int main(viod)<br>{<br>    struct Student stu1 &#x3D;{“jane”,20,95.5};<br>    struct Student stu2;<br>    strcpy(stu2.name,”Charlie”);<br>    stu2.age &#x3D; 19;<br>    stu2.score &#x3D; 80;<br>    struct Student stu3 &#x3D;{.name &#x3D;”Rose”,.age &#x3D;21, .score &#x3D; 98.5};</p>
-<pre><code>printf(&quot;学生1:姓名:%s,年龄:%d, 成绩:%.1f\n&quot;, stu1.name,stu1.age,stu1.score);
-printf(&quot;学生2:姓名:%s,年龄:%d, 成绩:%.1f\n&quot;, stu2.name,stu2.age,stu2.score);
-printf(&quot;学生3:姓名:%s,年龄:%d, 成绩:%.1f\n&quot;, stu3.name,stu3.age,stu3.score);
-
-struct class c1;
-stutpy(c1.ClassName, &quot;Class A&quot;);
-c1.leader = stu1;
-printf(&quot;班级:%s班长:%s,年龄:%d, 成绩:%.1f\n&quot;, c1.ClassName,c1.leader.name,c1.leader.age,c1.leader.score);
-return 0;
+        <p>一、EXTI基础核心概念</p>
+<ol>
+<li>全称：External Interrupt&#x2F;Event Controller 外部中断与事件控制器</li>
+<li>作用：持续监控GPIO引脚电平变化，电平跳变后产生信号，交给NVIC内核触发中断</li>
+<li>两条工作模式<br>◦ 中断模式（我们在用）：电平变化→申请中断→CPU停下主程序处理事务<br>◦ 事件模式：仅输出硬件脉冲，不打扰CPU，初学不用</li>
+<li>硬件搭配：EXTI必须依靠 SYSCFG模块 选择哪个GPIO端口接入中断线；必须依靠 NVIC 管理中断优先级、开启中断通道</li>
+</ol>
+<p>二、开启外部中断固定6大标准步骤<br>步骤1：开启外设时钟（所有外设第一步必做）<br>需要开启2个时钟：<br>① GPIO端口时钟（按键引脚供电）<br>② SYSCFG时钟（中断引脚端口映射必备）<br>&#x2F;&#x2F; RCC寄存器宏定义<br>#define RCC_BASE        (AHB1PERIPH_BASE + 0x3800)<br>#define RCC_AHB1ENR     <em>(volatile uint32_t</em>)(RCC_BASE + 0x30)  &#x2F;&#x2F; AHB1外设时钟使能<br>#define RCC_APB2ENR     <em>(volatile uint32_t</em>)(RCC_BASE + 0x44)  &#x2F;&#x2F; APB2外设时钟使能</p>
+<p>void RCC_Config(void)<br>{<br>    RCC_AHB1ENR |&#x3D; (1 &lt;&lt; 0);  &#x2F;&#x2F; 位0置1：开启GPIOA时钟<br>    RCC_APB2ENR |&#x3D; (1 &lt;&lt; 14); &#x2F;&#x2F; 位14置1：开启SYSCFG系统配置时钟<br>}<br>总结：单片机外设默认断电休眠，不开时钟硬件完全不工作；SYSCFG和EXTI，缺一不可</p>
+<p>步骤2：初始化GPIO引脚（按键输入 + LED输出）<br>按键引脚：配置为上拉输入；LED引脚：配置为推挽输出<br>&#x2F;&#x2F; GPIOA寄存器地址<br>#define GPIOA_BASE      (AHB1PERIPH_BASE + 0x0000)<br>#define GPIOA_MODER     <em>(volatile uint32_t</em>)(GPIOA_BASE + 0x00)  &#x2F;&#x2F; 模式寄存器<br>#define GPIOA_PUPDR     <em>(volatile uint32_t</em>)(GPIOA_BASE + 0x0C)  &#x2F;&#x2F; 上下拉寄存器<br>#define GPIOA_ODR       <em>(volatile uint32_t</em>)(GPIOA_BASE + 0x14)  &#x2F;&#x2F; 输出数据寄存器</p>
+<p>void GPIO_Config(void)<br>{<br>    &#x2F;&#x2F; 1、PA0 按键：上拉输入模式<br>    GPIOA_MODER &amp;&#x3D; ~(0x03 &lt;&lt; (0<em>2)); &#x2F;&#x2F; 清空PA0两位模式位，设置00&#x3D;输入模式<br>    GPIOA_PUPDR |&#x3D;  (0x01 &lt;&lt; (0</em>2)); &#x2F;&#x2F; 01&#x3D;开启内部上拉电阻<br>    &#x2F;&#x2F; 常态：引脚默认3.3V高电平；按键按下引脚接地变0V，产生下降沿</p>
+<pre><code>// 2、PA5 LED：通用推挽输出
+GPIOA_MODER &amp;= ~(0x03 &lt;&lt; (5*2));
+GPIOA_MODER |=  (0x01 &lt;&lt; (5*2)); // 01=输出模式
+GPIOA_ODR &amp;= ~(1 &lt;&lt; 5);         // 上电默认LED熄灭
 </code></pre>
 <p>}</p>
+<p>步骤3：SYSCFG配置：将中断线映射到指定GPIO端口<br>EXTI一共16条中断线(Line0<del>Line15)：<br>Line0统一对应所有引脚0（PA0&#x2F;PB0&#x2F;PC0…），需要SYSCFG选定具体端口，这里选PA端口<br>#define SYSCFG_BASE     (APB2PERIPH_BASE + 0x0000)<br>#define SYSCFG_EXTICR1  <em>(volatile uint32_t</em>)(SYSCFG_BASE + 0x08) &#x2F;&#x2F; EXTI线0</del>3端口选择寄存器</p>
+<p>void EXTI_Config(void)<br>{<br>    &#x2F;&#x2F; SYSCFG_EXTICR1低4位：配置Line0归属端口<br>    SYSCFG_EXTICR1 &amp;&#x3D; ~(0x0F &lt;&lt; 0); &#x2F;&#x2F; 先清空原有配置<br>    SYSCFG_EXTICR1 |&#x3D;  (0x00 &lt;&lt; 0); &#x2F;&#x2F; 写入0000：选择GPIOA端口<br>参数对照：<br>0000&#x3D;GPIOA  0001&#x3D;GPIOB  0010&#x3D;GPIOC …</p>
+<p>步骤4：配置EXTI核心寄存器（触发方式、开启中断）<br>#define EXTI_BASE       (APB2PERIPH_BASE + 0x3C00)<br>#define EXTI_IMR        <em>(volatile uint32_t</em>)(EXTI_BASE + 0x00) &#x2F;&#x2F; 中断屏蔽寄存器<br>#define EXTI_FTSR       <em>(volatile uint32_t</em>)(EXTI_BASE + 0x0C) &#x2F;&#x2F; 下降沿触发寄存器<br>#define EXTI_PR         <em>(volatile uint32_t</em>)(EXTI_BASE + 0x14) &#x2F;&#x2F; 中断挂起标志寄存器</p>
+<pre><code>// 1、EXTI_IMR：取消中断屏蔽，允许Line0发送中断请求
+EXTI_IMR |= (1 &lt;&lt; 0); 
+
+// 2、EXTI_FTSR：开启下降沿触发（3.3V→0V 电平跳变触发中断）
+EXTI_FTSR |= (1 &lt;&lt; 0); 
+
+// 可选：上升沿触发用 RTSR寄存器，双边沿两个寄存器都置1
+</code></pre>
+<p>}</p>
+<p>寄存器作用拆解：</p>
+<ol>
+<li>IMR中断屏蔽寄存器：bit&#x3D;1 允许中断；bit&#x3D;0 屏蔽中断</li>
+<li>FTSR下降沿触发寄存器：bit&#x3D;1 下降沿触发；RTSR&#x3D;上升沿触发</li>
+<li>PR挂起标志位：中断触发后硬件自动置1，必须软件清零</li>
+</ol>
+<p>步骤5：NVIC嵌套向量中断控制器配置（分配优先级、使能中断通道）<br>EXTI0中断属于内核外设中断，需要NVIC开启通道、设置优先级<br>&#x2F;&#x2F; NVIC内核寄存器地址（Cortex-M4内核固定地址）<br>#define NVIC_ISER0      <em>(volatile uint32_t</em>)0xE000E100 &#x2F;&#x2F; 中断使能寄存器<br>#define NVIC_IPR0       <em>(volatile uint32_t</em>)0xE000E400 &#x2F;&#x2F; 中断优先级寄存器</p>
+<p>void NVIC_Config(void)<br>{<br>    &#x2F;&#x2F; 1、给EXTI0设置优先级<br>    NVIC_IPR0 &amp;&#x3D; ~(0xFF &lt;&lt; 0);<br>    NVIC_IPR0 |&#x3D;  (0x40 &lt;&lt; 0);</p>
+<pre><code>// 2、ISER0寄存器：使能EXTI0中断通道，告诉CPU接收该中断
+NVIC_ISER0 |= (1 &lt;&lt; 6); // EXTI0中断对应第6位
+</code></pre>
+<p>}<br>规则：<br>抢占优先级数字越小，优先级越高；高优先级中断可以打断低优先级中断</p>
+<p>步骤6：编写中断服务函数（触发中断后执行的代码）<br> 函数名称固定，绝对不能自定义修改，启动文件预先规定好：<br>EXTI0对应：EXTI0_IRQHandler(void)<br>uint8_t led_state &#x3D; 0; &#x2F;&#x2F; LED状态全局变量</p>
+<p>void EXTI0_IRQHandler(void)<br>{<br>    &#x2F;&#x2F; 第一步：判断是不是EXTI Line0触发的中断<br>    if(EXTI_PR &amp; (1 &lt;&lt; 0))<br>    {<br>        led_state &#x3D; !led_state; &#x2F;&#x2F; LED状态翻转<br>        if(led_state)<br>            GPIOA_ODR |&#x3D; (1 &lt;&lt; 5);  &#x2F;&#x2F; LED点亮<br>        else<br>            GPIOA_ODR &amp;&#x3D; ~(1 &lt;&lt; 5); &#x2F;&#x2F; LED熄灭</p>
+<pre><code>    // 重中之重：向PR寄存器对应位写1，清除中断标志位
+    EXTI_PR |= (1 &lt;&lt; 0); 
+}
+</code></pre>
+<p>}<br>关键要点：</p>
+<ol>
+<li><p>不清零PR标志：芯片会一直判定中断未处理完毕，无限循环进入中断</p>
+</li>
+<li><p>中断函数代码必须简短，禁止长延时、大循环<br>主函数：调用所有初始化，循环等待中断触发<br>int main(void)<br>{<br> RCC_Config();<br> GPIO_Config();<br> EXTI_Config();<br> NVIC_Config();</p>
+<p> while(1)<br> {<br> &#x2F;&#x2F; 主循环空循环，CPU待机；中断到来立刻跳转中断函数<br> }</p>
+</li>
+</ol>
+<p>}</p>
+<p>三、完整运行时序流程</p>
+<ol>
+<li>上电依次开启时钟→配置引脚→映射中断线→设置触发方式→配置中断优先级</li>
+<li>空闲状态：PA0上拉为高电平，EXTI无电平变化，CPU运行while(1)</li>
+<li>按下按键：PA0电平3.3V下降至0V，产生下降沿</li>
+<li>EXTI检测电平跳变，将PR标志位置1，向NVIC发送中断请求</li>
+<li>CPU暂停主循环，自动保存寄存器现场，跳转至EXTI0_IRQHandler</li>
+<li>执行LED翻转代码，手动清除PR中断标志</li>
+<li>退出中断，恢复寄存器现场，回到while(1)继续待机</li>
+</ol>
+<p>四、极易踩坑的5个错误点</p>
+<ol>
+<li>忘记开启SYSCFG时钟 → 中断永远无法触发</li>
+<li>触发边沿设置相反 → 按键松开才进中断</li>
+<li>中断结尾未清零PR标志位 → 不间断反复进中断</li>
+<li>中断服务函数名字写错 → 触发中断程序直接跑飞死机</li>
+<li>同一根中断线同时启用两个引脚（PA0+PB0）→ 引脚冲突失效</li>
+</ol>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/18/C%E8%AF%AD%E8%A8%80%E7%BB%93%E6%9E%84%E4%BD%93%E7%AC%94%E8%AE%B0/" data-id="cuidWRvKCk21iZo6jINR3lZzp" data-title="C语言结构体笔记" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2026/07/30/EXTI%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD%E6%8E%A7%E5%88%B6%E5%99%A8%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/" data-id="cuidHIhz5TOqjiqra2Mll49Lt" data-title="EXTI外部中断控制器操作总结" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" rel="tag">结构体</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" rel="tag">编程笔记</a></li></ul>
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/EXTI/" rel="tag">EXTI</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/NVIC/" rel="tag">NVIC</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD/" rel="tag">外部中断</a></li></ul>
 
     </footer>
   </div>
@@ -141,19 +194,19 @@ return 0;
     
 <nav id="article-nav">
   
-    <a href="/2026/07/19/C%E8%AF%AD%E8%A8%80%E5%85%B3%E4%BA%8Escanf%E5%92%8Ctypedef%E7%9A%84%E7%AC%94%E8%AE%B0/" id="article-nav-newer" class="article-nav-link-wrap">
+    <a href="/2026/07/30/%E7%B3%BB%E7%BB%9F%E6%BB%B4%E7%AD%94%E5%AE%9A%E6%97%B6%E5%99%A8%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/" id="article-nav-newer" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Newer</strong>
       <div class="article-nav-title">
         
-          C语言关于scanf,typedef的笔记
+          systick系统滴答定时器操作总结
         
       </div>
     </a>
   
   
-    <a href="/2026/07/18/chenge-first-blog/" id="article-nav-older" class="article-nav-link-wrap">
+    <a href="/2026/07/30/%E4%B8%AD%E6%96%AD%E6%A6%82%E5%BF%B5%E7%AC%94%E8%AE%B0/" id="article-nav-older" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Older</strong>
-      <div class="article-nav-title">change-first-blog</div>
+      <div class="article-nav-title">中断概念笔记</div>
     </a>
   
 </nav>
