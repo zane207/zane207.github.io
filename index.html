@@ -71,6 +71,347 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-USART串口功能框图总结" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2026/08/01/USART%E4%B8%B2%E5%8F%A3%E5%8A%9F%E8%83%BD%E6%A1%86%E5%9B%BE%E6%80%BB%E7%BB%93/" class="article-date">
+  <time class="dt-published" datetime="2026-08-01T12:26:57.000Z" itemprop="datePublished">2026-08-01</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>►<a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E8%AF%BE%E7%A8%8B%E6%80%BB%E7%BB%93/">课程总结</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2026/08/01/USART%E4%B8%B2%E5%8F%A3%E5%8A%9F%E8%83%BD%E6%A1%86%E5%9B%BE%E6%80%BB%E7%BB%93/">USART串口功能框图总结</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>STM32 USART串口功能框图四大模块详解<br>野火课程把串口内部硬件划分为4大核心模块：“引脚、数据寄存器、控制器、波特率发生器”</p>
+<p>一、引脚（硬件对外接口）</p>
+<ol>
+<li>引脚英文与释义</li>
+</ol>
+<ul>
+<li>TX：Transmit，发送引脚，串行数据输出</li>
+<li>RX：Receive，接收引脚，串行数据输入</li>
+<li>CK：Clock，同步模式时钟输出（异步串口一般不用）</li>
+<li>nRTS：Request To Send，请求发送（硬件流控输出）</li>
+<li>nCTS：Clear To Send，允许发送（硬件流控输入）</li>
+</ul>
+<ol start="2">
+<li>作用<br>作为USART外设与外部电路交互的出入口<br>发送时：内部并行数据转换成串行比特流，从TX引脚输出电平<br>接收时：RX引脚采集外部电平信号，送入内部电路转换成并行数据</li>
+<li>硬件要求：TX、RX需要配置为复用功能模式，开启对应GPIO时钟与USART外设时钟</li>
+</ol>
+<p>二 、数据寄存器（数据缓冲区核心）<br>分为“发送通路”和“接收通路”，两套独立硬件<br>寄存器英文释义</p>
+<ul>
+<li>TDR：Transmit Data Register，发送数据寄存器</li>
+<li>RDR：Receive Data Register，接收数据寄存器</li>
+</ul>
+<ol>
+<li>发送端：TDR（发送数据寄存器） + 发送移位寄存器<br> CPU把要发送的字节写入TDR；硬件自动将TDR数据搬运到发送移位寄存器，逐位串行移出到TX引脚<br> TDR为空时会置位TXE（发送寄存器空）标志，通知CPU可以继续填充下一组数据</li>
+<li>接收端：RDR（接收数据寄存器） + 接收移位寄存器<br> RX引脚收到串行比特，先进入接收移位寄存器；收满1帧完整数据后，自动并行存入RDR寄存器<br> 数据就绪后置位RXNE（接收寄存器非空）标志，通知CPU读取RDR</li>
+<li>关键特点<br>移位寄存器负责串并转换（并行 ↔ 串行）；<br>TDR&#x2F;RDR作为CPU和移位寄存器之间的缓冲，实现硬件持续收发。</li>
+</ol>
+<p>三、控制器（控制逻辑、中断、状态管理）<br>框图中的发送控制、接收控制、中断单元统一归为控制器。<br>相关标识释义</p>
+<ul>
+<li>中断单元（Interrupt）：产生中断请求信号，送往NVIC</li>
+<li>SR：Status Register，状态寄存器（存放TXE、RXNE、TC各类标志位）</li>
+<li>CR：Control Register，控制寄存器（开启发送、接收、校验、模式选择）</li>
+<li>TC：Transmission Complete，发送完成标志<br>主要功能</li>
+</ul>
+<ol>
+<li>帧时序控制<br>严格按照串口协议，自动添加起始位、停止位、校验位，完成一帧数据封装&#x2F;解析</li>
+<li>状态标志管理<br>生成TXE、RXNE、TC等状态位，CPU通过查询标志判断收发状态</li>
+<li>中断触发控制<br>满足条件时向NVIC发起中断请求（收到数据、发送完成等场景）</li>
+<li>模式管理<br>控制异步&#x2F;同步模式、全双工、校验使能、停止位长度等通信参数</li>
+</ol>
+<p>简单理解：控制器就是串口的“总指挥”，管理整套收发时序逻辑。</p>
+<p>四、波特率发生器（USART_BRR寄存器）<br>英文释义</p>
+<ul>
+<li>BRR：Baud Rate Register，波特率寄存器</li>
+<li>fplck：外设输入时钟（来自APB时钟树）</li>
+<li>USARTDIV：分频系数<br>核心作用<br>产生稳定的收发采样时钟，决定串口通信速率<br>输入时钟来自APB时钟，经过BRR内部分频运算，输出标准采样时钟<br>USARTDIV由BRR寄存器中的小数部分、整数部分共同计算得出<br> 重点知识点</li>
+</ul>
+<ol>
+<li>收发双方波特率必须完全匹配，否则采样错位，数据乱码；</li>
+<li>波特率发生器独立供给发送、接收电路时钟，保证发送、接收节拍同步；</li>
+<li>BRR寄存器用来配置分频系数，是初始化串口必不可少的一步</li>
+<li>整体收发流程串联（方便理解框图）</li>
+<li>发送流程：<br>CPU写入数据 → TDR → 发送移位寄存器 → TX引脚输出（按照波特率时钟逐位移出）</li>
+<li>接收流程：<br>RX引脚采集电平 → 接收移位寄存器串转并 → 收满1帧存入RDR → 置位接收标志，通知CPU读取</li>
+<li>四大模块协作关系：<br>波特率发生器提供统一节拍时钟 → 控制器管控时序规则 → 数据寄存器完成串并转换缓冲 → 引脚实现对外信号传输</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>英文缩写</th>
+<th>英文全称</th>
+<th>中文含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>USART</td>
+<td>Universal Synchronous&#x2F;Asynchronous Receiver&#x2F;Transmitter</td>
+<td>通用同步异步收发器</td>
+</tr>
+<tr>
+<td>TX</td>
+<td>Transmit</td>
+<td>发送</td>
+</tr>
+<tr>
+<td>RX</td>
+<td>Receive</td>
+<td>接收</td>
+</tr>
+<tr>
+<td>TDR</td>
+<td>Transmit Data Register</td>
+<td>发送数据寄存器</td>
+</tr>
+<tr>
+<td>RDR</td>
+<td>Receive Data Register</td>
+<td>接收数据寄存器</td>
+</tr>
+<tr>
+<td>TXE</td>
+<td>Transmit Data Register Empty</td>
+<td>发送寄存器空标志</td>
+</tr>
+<tr>
+<td>RXNE</td>
+<td>Receive Data Register Not Empty</td>
+<td>接收寄存器非空标志</td>
+</tr>
+<tr>
+<td>TC</td>
+<td>Transmission Complete</td>
+<td>发送完成标志</td>
+</tr>
+<tr>
+<td>SR</td>
+<td>Status Register</td>
+<td>状态寄存器</td>
+</tr>
+<tr>
+<td>CR</td>
+<td>Control Register</td>
+<td>控制寄存器</td>
+</tr>
+<tr>
+<td>BRR</td>
+<td>Baud Rate Register</td>
+<td>波特率寄存器</td>
+</tr>
+<tr>
+<td>CK</td>
+<td>Clock</td>
+<td>同步时钟</td>
+</tr>
+<tr>
+<td>RTS</td>
+<td>Request To Send</td>
+<td>请求发送（流控）</td>
+</tr>
+<tr>
+<td>CTS</td>
+<td>Clear To Send</td>
+<td>允许发送（流控）</td>
+</tr>
+</tbody></table>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2026/08/01/USART%E4%B8%B2%E5%8F%A3%E5%8A%9F%E8%83%BD%E6%A1%86%E5%9B%BE%E6%80%BB%E7%BB%93/" data-id="cuidxzAW5LjeRYQU_iQQ49HYe" data-title="USART串口功能框图总结" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/USART/" rel="tag">USART</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E4%B8%B2%E5%8F%A3/" rel="tag">串口</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">嵌入式寄存器</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%A1%86%E5%9B%BE%E5%88%86%E6%9E%90/" rel="tag">框图分析</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="post-USART串口通信协议简介总结" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2026/08/01/USART%E4%B8%B2%E5%8F%A3%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE%E7%AE%80%E4%BB%8B%E6%80%BB%E7%BB%93/" class="article-date">
+  <time class="dt-published" datetime="2026-08-01T12:03:35.000Z" itemprop="datePublished">2026-08-01</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>►<a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E8%AF%BE%E7%A8%8B%E6%80%BB%E7%BB%93/">课程总结</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2026/08/01/USART%E4%B8%B2%E5%8F%A3%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE%E7%AE%80%E4%BB%8B%E6%80%BB%E7%BB%93/">USART串口通信协议简介总结</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>串口通信协议简介<br>前置基础：通信分为两层</p>
+<ol>
+<li>物理层（硬件）<br>规定机械、电气特性，负责原始比特信号在导线传输，就是硬件线路、电平标准<br>通俗比喻：规定“用嘴巴还是肢体交流”</li>
+<li>协议层（软件）<br>规定通信逻辑，统一数据打包、解包规则，定义一帧数据格式<br>我们常说的UART&#x2F;TTL串口帧格式，属于<strong>协议层</strong><br>RS232、USB转串口、芯片直连TTL串口，属于三种不同<strong>物理层实现方案</strong></li>
+</ol>
+<p> 一、RS232标准</p>
+<ol>
+<li>基本介绍<br>早期计算机广泛使用的串口电气标准，常见DB9九针接口来传送数据</li>
+</ol>
+<ul>
+<li>RS232电平标准：逻辑1 &#x3D; -3V ~ -15V；逻辑0 &#x3D; +3V ~ +15V</li>
+<li>TTL电平标准：逻辑1 &#x3D; 2.4V ~ 5V；逻辑0 &#x3D; 0V ~ 0.5V</li>
+<li>和STM32芯片3.3V TTL电平不兼容，不能直接相连，必须搭配电平转换芯片（MAX232）</li>
+</ul>
+<ol start="2">
+<li>特点<br>正负差分电平，抗干扰能力较强，适合工业短距离通信<br>体积大、电压复杂，现代单片机开发极少直接使用</li>
+<li>使用场景<br>老式工控设备、老旧台式电脑后置9针串口<br>现在学习STM32基本不会直接接触</li>
+</ol>
+<p>二、USB转串口（CH340&#x2F;CP2102，学习最常用）</p>
+<ol>
+<li>基本介绍<br>电脑没有原生TTL串口，借助转换芯片实现协议转换：<br><code>电脑USB信号 ⇋ TTL电平UART信号</code><br>电脑系统识别为虚拟COM串口</li>
+<li>硬件连接规则<br>CH340模块与STM32接线：<br>模块TXD  → 单片机RX<br>模块RXD  → 单片机TX<br>模块GND  → 单片机GND（必须共地）</li>
+<li>特点<br>直接插电脑USB，方便调试打印信息、下载程序；是STM32学习标配工具<br>核心本质：底层依然是TTL电平UART协议，只是外层封装USB传输</li>
+<li>使用场景<br>电脑 ↔ STM32开发板调试通信</li>
+</ol>
+<p>三、协议层<br>串口通讯的数据包由发送设备通过自身的TXD接口传输到接收设备的RXD接口。在串口通讯<br>的协议层中，规定了数据包的内容，它由启始位、主体数据、校验位以及停止位组成，通讯双方<br>的数据包格式要约定一致才能正常收发数据</p>
+<ol>
+<li>波特率<br>本章中主要讲解的是串口异步通讯，异步通讯中由于没有时钟信号(如前面讲解的DB9接口中是<br>没有时钟信号的)，所以两个通讯设备之间需要约定好波特率，即每个码元的长度，以便对信号<br>进行解码，图串口数据包的基本组成中用虚线分开的每一格就是代表一个码元。常见的波特率<br>为4800、9600、115200 等</li>
+<li>通讯的起始和停止信号<br>串口通讯的一个数据包从起始信号开始，直到停止信号结束。数据包的起始信号由一个逻辑0的<br>数据位表示，而数据包的停止信号可由0.5、1、1.5或2个逻辑1的数据位表示，只要双方约定<br>一致即可</li>
+<li>有效数据<br>在数据包的起始位之后紧接着的就是要传输的主体数据内容，也称为有效数据，有效数据的长度<br>常被约定为5、6、7或8位长</li>
+<li>数据校验<br>在有效数据之后，有一个可选的数据校验位，由于数据通信相对更容易受到外部干扰导致传输<br>数据出现偏差，可以在传输过程加上校验位来解决这个问题，校验方法有奇校验(odd)、偶校验<br>(even)、0 校验 (space)、1 校验 (mark) 以及无校验(noparity)<br>它们介绍如下：<br>• 奇校验要求有效数据和校验位中“1”的个数为奇数，比如一个 8 位长的有效数据为：<br>01101001，此时总共有 4 个“1”，为达到奇校验效果，校验位为“1”，最后传输的数据<br>将是8位的有效数据加上1位的校验位总共9位。<br>• 偶校验与奇校验要求刚好相反，要求帧数据和校验位中“1”的个数为偶数，比如数据帧：<br>11001010，此时数据帧“1”的个数为4个，所以偶校验位为“0”。<br>• 0校验是不管有效数据中的内容是什么，校验位总为“0”，1校验是校验位总为“1”。<br>• 在无校验的情况下，数据包中不包含校验位</li>
+</ol>
+<p>四、原生串口到串口（TTL电平芯片直连）</p>
+<ol>
+<li>基本介绍<br>STM32芯片内部USART外设直接输出<strong>3.3V TTL电平</strong>，两个单片机芯片引脚直连通信<br>电平规则：3.3V代表逻辑1，0V代表逻辑0。</li>
+<li>接线核心规则（交叉连接）<br>设备A(TX) → 设备B(RX)<br>设备A(RX) → 设备B(TX)<br>双方GND互相连接，提供统一电平参考基准</li>
+<li>特点<br>不需要额外转换芯片，电路最简单；板间、芯片之间近距离通信首选<br>TTL电平抗干扰弱，不适合长距离传输</li>
+<li>使用场景<br>单片机 ↔ 单片机、单片机 ↔ TTL电平传感器、模块之间互相通信<br>补充总结区分</li>
+<li>RS232：工业老标准，正负电平，需要MAX232转换</li>
+<li>USB转串口：电脑与开发板桥梁，CH340实现USB转TTL，日常调试必备</li>
+<li>原生TTL串口直连：芯片与芯片直接通信，嵌入式模块互联常用</li>
+</ol>
+<p>三者协议层（UART帧格式规则完全一样），仅仅硬件电气标准（物理层）不同</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2026/08/01/USART%E4%B8%B2%E5%8F%A3%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE%E7%AE%80%E4%BB%8B%E6%80%BB%E7%BB%93/" data-id="cuiddxvK7H2k1dyJaoFATWT_u" data-title="USART串口通信协议简介总结" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/USART/" rel="tag">USART</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E4%B8%B2%E5%8F%A3/" rel="tag">串口</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/" rel="tag">嵌入式</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE/" rel="tag">通信协议</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="post-通讯的基本概念" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2026/08/01/%E9%80%9A%E8%AE%AF%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" class="article-date">
+  <time class="dt-published" datetime="2026-08-01T11:38:38.000Z" itemprop="datePublished">2026-08-01</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>►<a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E8%AF%BE%E7%A8%8B%E6%80%BB%E7%BB%93/">课程总结</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2026/08/01/%E9%80%9A%E8%AE%AF%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/">通讯的基本概念</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>一.通讯中有四大基本概念</p>
+<ol>
+<li>串行通讯与并行通讯</li>
+<li>全双工、半双工及单工通讯</li>
+<li>同步通讯与异步通讯</li>
+<li>通讯速率</li>
+</ol>
+<p>二、串行通信与并行通信</p>
+<ol>
+<li><p>串行通信<br>仅使用一根数据线，数据按二进制位依次逐位传输<br>优点：接线数量少、布线简单、长线抗干扰性能优秀，适合板间远距离通信<br>缺点：同一时刻只能传输1位数据，理论上限速率低于并行通信<br>典型外设：USART、I2C、SPI</p>
+</li>
+<li><p>并行通信<br>具备多条数据线，多个bit同时并行传输<br>优点：瞬时传输速度快<br>缺点：引线繁多；长距离传输容易发生时序偏移、信号线互相干扰，多用于电路板内部短距离通信<br>典型外设：并行LCD、FSMC存储器接口</p>
+</li>
+<li><p>嵌入式开发绝大多数外设采用串行通信方案</p>
+</li>
+</ol>
+<p>三、单工、半双工、全双工（传输方向划分）</p>
+<ol>
+<li>单工<br>数据传输方向固定不变，一端只能发送，另一端只能接收，无法反向传输<br>示例：红外遥控器、无线电广播</li>
+<li>半双工<br>支持双向数据收发，但“同一时刻不能同时发送与接收”，收发模式需要切换<br>示例：RS485总线</li>
+<li>全双工<br>拥有独立的发送信号线、接收信号线，发送和接收能够同时进行，互不冲突<br>示例：标准USART串口（TX、RX两根独立线路）</li>
+</ol>
+<p>四、同步通信与异步通信（时钟同步方式划分）</p>
+<ol>
+<li>异步通信<br>不存在独立时钟信号线<br>通信双方提前约定统一波特率，依靠帧结构中的“起始位、停止位”区分每一帧数据，自主采样<br>特点：接线简洁；不适合极高通信速率。<br>代表：普通USART串口</li>
+<li>同步通信<br>额外引出单独时钟信号线SCLK，收发双方跟随同一时钟节拍采集数据<br>特点：传输效率高，支持高速通信；需要增加一根时钟信号线<br>代表：SPI、I2C</li>
+<li>快速区分口诀：有无独立时钟信号线</li>
+</ol>
+<p>五、通信的速率</p>
+<ol>
+<li>波特率 Baud<br>单位：Baud（波特）<br>定义：每秒传输的码元数量，是串口通信核心配置参数<br>常用标准波特率：9600、115200</li>
+<li>重要区分<br>波特率 ≠ 比特率；<br>在串口二进制传输场景下，1个码元携带1bit信息，此时波特率数值近似等于比特率</li>
+<li>核心规则：<br>异步通信的收发双方“波特率必须完全一致”，否则接收数据乱码</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2026/08/01/%E9%80%9A%E8%AE%AF%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" data-id="cuidQ06J3rMPptvKTNZ4si9Mk" data-title="通讯的基本概念" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
     <article id="post-系统滴答定时器操作总结" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
     <a href="/2026/07/30/%E7%B3%BB%E7%BB%9F%E6%BB%B4%E7%AD%94%E5%AE%9A%E6%97%B6%E5%99%A8%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/" class="article-date">
@@ -752,337 +1093,6 @@ while (1)
 
 
   
-    <article id="post-STM32f407GPIO寄存器实操笔记2" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
-  <div class="article-meta">
-    <a href="/2026/07/22/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B02/" class="article-date">
-  <time class="dt-published" datetime="2026-07-22T06:14:06.000Z" itemprop="datePublished">2026-07-22</time>
-</a>
-    
-  <div class="article-category">
-    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>►<a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E8%AF%BE%E7%A8%8B%E6%80%BB%E7%BB%93/">课程总结</a>
-  </div>
-
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="p-name article-title" href="/2026/07/22/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B02/">手动搭建GPIO函数库函数雏形.2</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="e-content article-entry" itemprop="articleBody">
-      
-        <p>这次做寄存器映射中的结构体映射<br>结构体映射要从：<br>1.定义基础类型<br>2.建立结构体映射<br>3.用指针配合结构体<br>4.使用 BSRR 寄存器来拉高&#x2F;拉低电平</p>
-<p>一、 为什么要定义基础类型（typedef）？<br>代码片段：<br>typedef unsigned char  uint8_t;<br>typedef unsigned int   uint32_t;<br>原因：跨平台与硬件的“绝对对齐”</p>
-<ol>
-<li>C语言的“不严谨”：在标准 C 语言中，int 到底是 16位、32位还是 64位，取决于你的编译器（比如 PC 上的 GCC 和单片机上的 ARMCC 是不同的）。</li>
-<li>硬件的“强迫症”：STM32 的寄存器是严格的 32位（4字节）或 8位。如果你用 int 去操作一个本该是 32位的寄存器，在某些编译器下可能只分配了 16位，导致你写入的数据被截断，或者覆盖了旁边的其他寄存器。</li>
-<li>结论：通过 typedef 强制规定 uint32_t 就是 32位无符号整数，确保代码在任何编译器下，对内存的读写长度都是绝对一致的</li>
-</ol>
-<p>二、<br> 为什么要用结构体（struct）来映射寄存器？<br>代码片段：<br>typedef struct {<br>    volatile uint32_t MODER;       &#x2F;&#x2F; 偏移 0x00<br>    volatile uint32_t OTYPER;      &#x2F;&#x2F; 偏移 0x04<br>    &#x2F;&#x2F; …<br>} GPIO_RegDef_t;<br>原因：将“冰冷的地址”变成“有逻辑的变量”</p>
-<ol>
-<li>内存的连续性：STM32 的 GPIOA 的所有寄存器在物理内存中是紧挨着的（从 0x40020000 开始，每隔 4 个字节一个）。C 语言的结构体在内存中也是连续分配的</li>
-<li>告别魔法数字（Magic Number）：<ul>
-<li>如果不用结构体，你要配置模式，得写：(volatile uint32_t)(0x40020000 + 0x00) &#x3D; xxx;</li>
-<li>配置速度得写：(volatile uint32_t)(0x40020000 + 0x08) &#x3D; xxx;</li>
-<li>这种代码极难维护，一旦基地址变了，要改几十处</li>
-</ul>
-</li>
-<li>结构体的优雅：定义好结构体后，编译器会自动帮你计算偏移量。你只需要写 pGPIOx-&gt;OSPEEDR &#x3D; xxx;，编译器会自动翻译成 基地址 + 0x08。代码可读性极强，且完美契合芯片手册的寄存器表格<br>关键补充：volatile 关键字的作用<br>注意结构体里的 volatile。它告诉编译器：“这个变量的值可能会在程序之外被改变（被硬件改变），请不要自作聪明把它优化到 CPU 寄存器里，每次都必须老老实实去内存（物理地址）里读取！” 如果没有它，你的代码在开启编译优化（如 -O2）时会彻底失效</li>
-</ol>
-<p>三、 为什么要用指针（Pointer）？<br>代码片段：<br>  define GPIOA ((GPIO_RegDef_t*)GPIOA_BASE)<br>  void My_GPIO_Init(GPIO_RegDef_t *pGPIOx, GPIO_InitTypeDef *pGPIOInit);<br>原因：实现代码的“高度复用”</p>
-<ol>
-<li>硬件的对称性：STM32 有 GPIOA, GPIOB, GPIOC… 它们的内部寄存器结构（MODER, OTYPER等）是一模一样的，仅仅是基地址不同</li>
-<li>指针的魔力：如果我们把函数的参数写成 GPIO_RegDef_t *pGPIOx（一个指向 GPIO 结构体的指针），那么：<ul>
-<li>传 GPIOA 进去，它就操作 GPIOA 的寄存器</li>
-<li>传 GPIOB 进去，它就操作 GPIOB 的寄存器</li>
-</ul>
-</li>
-<li>结论：通过指针，你只需要写一套初始化函数，就能控制芯片上的几十个 GPIO 端口。这就是底层驱动框架设计的核心思想。</li>
-</ol>
-<p>四、 为什么要用 BSRR 寄存器来拉高&#x2F;拉低电平？<br>代码片段：<br>&#x2F;&#x2F; 拉高：低 16 位置 1<br>GPIOA-&gt;BSRR &#x3D; (1 BSRR &#x3D; (1 ODR |&#x3D; (1 ODR 步骤2：在 CPU 内部修改第 14 位 -&gt; 步骤3. 把新值写回 ODR))))<br>   如果在步骤2和步骤3之间，发生了中断，并且中断里也修改了 GPIOA 的其他引脚，那么中断返回后，步骤3.会把中断里的修改直接覆盖掉！这就叫“非原子操作”，极易引发隐蔽的 Bug<br>2. BSRR 的完美设计（原子操作）：<br>   BSRR（Bit Set&#x2F;Reset Register）是一个只写寄存器，硬件为它设计了特殊的逻辑：</p>
-<ul>
-<li>低 16 位 (0~15)：写 1 会将 ODR 对应位置 1（拉高），写 0 无效</li>
-<li>高 16 位 (16~31)：写 1 会将 ODR 对应位置 0（拉低），写 0 无效</li>
-</ul>
-<p>   优势：你只需要一条赋值语句（一条汇编指令 STR），硬件直接在内部完成“置位”或“清零”，不需要读-改-写的过程。这被称为原子操作，即使在最高优先级的中断里操作 BSRR，也绝对不会影响其他引脚的状态</p>
-<p>总结：</p>
-<ul>
-<li>基础类型保证了数据宽度的绝对正确；</li>
-<li>结构体把物理地址变成了优雅的代码；</li>
-<li>指针让一套代码控制了所有外设；</li>
-<li>BSRR 则利用硬件特性，保证了电平翻转的绝对安全与高效</li>
-</ul>
-<p>总体代码<br>1.函数库代码<br>&#x2F;* — 基础类型定义  — *&#x2F;<br>typedef unsigned char  uint8_t;<br>typedef unsigned short uint16_t;<br>typedef unsigned int   uint32_t;</p>
-<p>&#x2F;* — 1. GPIO 结构体定义  — *&#x2F;<br>typedef struct {<br>    uint32_t GPIO_Pin;             &#x2F;&#x2F; 引脚号<br>    uint8_t  GPIO_Mode;            &#x2F;&#x2F; 模式: 0&#x3D;输入, 1&#x3D;输出, 2&#x3D;复用, 3&#x3D;模拟<br>    uint8_t  GPIO_Speed;           &#x2F;&#x2F; 速度: 0&#x3D;2M, 1&#x3D;25M, 2&#x3D;50M, 3&#x3D;100M<br>    uint8_t  GPIO_OType;           &#x2F;&#x2F; 输出类型: 0&#x3D;推挽, 1&#x3D;开漏<br>    uint8_t  GPIO_PuPd;            &#x2F;&#x2F; 上下拉: 0&#x3D;无, 1&#x3D;上拉, 2&#x3D;下拉<br>} GPIO_InitTypeDef;</p>
-<p>&#x2F;&#x2F; 将物理地址强制转换为结构体指针，这样就能像操作变量一样操作寄存器<br>typedef struct {<br>    volatile uint32_t MODER;       &#x2F;&#x2F; 偏移 0x00<br>    volatile uint32_t OTYPER;      &#x2F;&#x2F; 偏移 0x04<br>    volatile uint32_t OSPEEDR;     &#x2F;&#x2F; 偏移 0x08<br>    volatile uint32_t PUPDR;       &#x2F;&#x2F; 偏移 0x0C<br>    volatile uint32_t IDR;         &#x2F;&#x2F; 偏移 0x10<br>    volatile uint32_t ODR;         &#x2F;&#x2F; 偏移 0x14<br>    volatile uint32_t BSRR;        &#x2F;&#x2F; 偏移 0x18<br>    volatile uint32_t LCKR;        &#x2F;&#x2F; 偏移 0x1C<br>    volatile uint32_t AFRL;        &#x2F;&#x2F; 偏移 0x20<br>    volatile uint32_t AFRH;        &#x2F;&#x2F; 偏移 0x24<br>} GPIO_RegDef_t;</p>
-<p>&#x2F;&#x2F; 定义 GPIOA 指针，指向物理地址<br>#define GPIOA                 ((GPIO_RegDef_t*)GPIOA_BASE)</p>
-<p>2.main代码<br>#include “stm32f4xx.h” </p>
-<p>void My_GPIO_Init(GPIO_RegDef_t *pGPIOx, GPIO_InitTypeDef *pGPIOInit);</p>
-<p>int main(void)<br>{<br>	GPIO_InitTypeDef cfg;<br>	My_GPIO_Init(GPIOA, &amp;cfg);<br>	while(1);<br>	{<br>	}<br>}</p>
-<p>void My_GPIO_Init(GPIO_RegDef_t *pGPIOx, GPIO_InitTypeDef *pGPIOInit)<br>{<br>   	RCC_AHB1ENR |&#x3D; (1&lt;&lt;0);	</p>
-<pre><code>// 1. 配置 MODER (模式)
-// 这里为了简单，只演示配置单个引脚的逻辑，实际库函数会遍历所有位
-// 假设我们要配置 Pin 14 为输出 (Mode = 01b)
-// 注意：这里简化了逻辑，实际需要根据 pGPIOInit-&gt;GPIO_Pin 计算位移
-
-// 为了让你直接能用，针对 PA14 输出的硬编码示例：
-pGPIOx-&gt;MODER &amp;= ~(3 &lt;&lt; (14*2)); // 清除 PA14 的两位
-pGPIOx-&gt;MODER |= (1 &lt;&lt; (14*2));  // 设置为输出 (01)
-
-// 2. 配置 OTYPER (推挽/开漏) - 只有1位
-
-    pGPIOx-&gt;OTYPER |= (1 &lt;&lt; 14);
-
-    pGPIOx-&gt;OTYPER &amp;= ~(1 &lt;&lt; 14);
-
-// 3. 配置 OSPEEDR (速度) - 2位
-pGPIOx-&gt;OSPEEDR &amp;= ~(3 &lt;&lt; (14*2));
-pGPIOx-&gt;OSPEEDR |= (pGPIOInit-&gt;GPIO_Speed &lt;&lt; (14*2));
-
-// 4. 配置 PUPDR (上下拉) - 2位
-pGPIOx-&gt;PUPDR &amp;= ~(3 &lt;&lt; (14*2));
-pGPIOx-&gt;PUPDR |= (pGPIOInit-&gt;GPIO_PuPd &lt;&lt; (14*2));
-// 4. 控制输出高电平 (Set Bit)
-//GPIOA-&gt;BSRR = (1 &lt;&lt; 14); 
-	// 4. 控制输出低电平 
-GPIOA-&gt;BSRR = (1 &lt;&lt; 14+16); 
-while(1)
-{
-}
-</code></pre>
-<p>}</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/22/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B02/" data-id="cuidcLLMLo79o3dihNZC_cGL2" data-title="手动搭建GPIO函数库函数雏形.2" class="article-share-link"><span class="fa fa-share">Share</span></a>
-      
-      
-      
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-
-  
-    <article id="post-STM32f407GPIO寄存器实操笔记" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
-  <div class="article-meta">
-    <a href="/2026/07/21/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B0/" class="article-date">
-  <time class="dt-published" datetime="2026-07-21T10:00:00.000Z" itemprop="datePublished">2026-07-21</time>
-</a>
-    
-  <div class="article-category">
-    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>►<a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E5%AE%9E%E6%93%8D%E6%80%BB%E7%BB%93/">实操总结</a>
-  </div>
-
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="p-name article-title" href="/2026/07/21/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B0/">STM32f407GPIO寄存器实操笔记</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="e-content article-entry" itemprop="articleBody">
-      
-        <p>第一<br>1、片上外设基地址<br>ST生产STM32的时候，给芯片里面所有外设安排独一无二的地址，就像每家的门牌号。<br>所有外设统一从 0x40000000 开始，这个把它取为：PERIPH_BASE<br>#define PERIPH_BASE          ((unsigned int)0x40000000)<br>理解：整个小区大门地址：0x40000000<br>2、区分不同总线：AHB1总线偏移<br>芯片内部有好几条“（总线）”<br>GPIOA&#x2F;GPIOB&#x2F;GPIOF全部跑在 AHB1<br>厂家规定：AHB1 &#x3D; PERIPH_BASE + 0x20000<br>#define AHB1PERIPH_BASE       (PERIPH_BASE + 0x00020000)	<br>理解：AHB1这条街道入口 &#x3D; 大门往里走0x20000<br>3、GPIOA的门牌号<br>GPIOA就在AHB1街道最开头，偏移0，所以：<br>#define GPIOA_BASE         (AHB1PERIPH_BASE + 0x0000)<br>GPIOF是 AHB1PERIPH_BASE + 0x1400，相当于同一条街往后走一段距离。<br>4、GPIOA里面一堆寄存器，靠【偏移量】区分<br>找到GPIOA大门（GPIOA_BASE）之后，门里面有一排连续房间，每个房间对应一个寄存器：<br>厂家手册固定死偏移：<br>• MODER 模式寄存器：进门第0间 → +0x00<br>• OTYPER 输出类型：第1间 → +0x04<br>• OSPEEDR速度寄存器：+0x08<br>• PUPDR上下拉：+0x0C<br>• IDR输入寄存器：+0x10<br>• ODR输出寄存器：+0x14<br>• BSRR置位&#x2F;复位寄存器：+0x18<br>代码里这句含义：<br>#define GPIOA_MODER	<em>(unsigned int</em>)(GPIOA_BASE+0x00)</p>
-<ol>
-<li>GPIOA_BASE+0x00：算出MODER房间地址</li>
-<li>(unsigned int *)：把数字强行变成地址指针</li>
-<li>最前面*：代表去这个地址里面读写数据</li>
-</ol>
-<p>第二：2*5、1&lt;&lt;5 这些数字怎么来（PA5引脚）<br>每个引脚都分配固定的bit位置<br> 1.MODER、OSPEEDR、PUPDR：每个引脚占用 2个bit！！重点！<br>PA0 → bit0、bit1<br>PA1 → bit2、bit3<br>PA2 → bit4、bit5<br>……<br>PA5 → bit10、bit11<br>计算公式：引脚编号 × 2<br>PA5：5 * 2 &#x3D;10，从第10位开始占用两位<br>GPIOA_MODER &amp;&#x3D; ~((unsigned int)0x3 &lt;&lt; (2 * 5));<br>0x3 &#x3D; 二进制11，代表连续两个1；向左移10位，刚好对准PA5的两个bit。</p>
-<p> 2.OTYPER、BSRR、IDR、ODR：每个引脚只占用 1个bit<br>PA5就只用第5号位，不用乘2<br>GPIOA_OTYPER &amp;&#x3D; ~(0x1 &lt;&lt; 5);<br>GPIOA_BSRR |&#x3D; (1 &lt;&lt; 5);<br>1 &lt;&lt; 5 &#x3D; 二进制 100000，第5位是1，精准选中PA5</p>
-<p> 3.BSRR特殊规则（一定要记住）<br>• 低16位（bit0<del>15）写1 → 引脚变高电平<br>• 高16位（bit16</del>31）写1 → 引脚变低电平<br>PA5拉低写法：1 &lt;&lt; (16+5)</p>
-<p>第三点：函数里每一步的逻辑通俗解释<br>RCC_AHB1ENR |&#x3D; (1 &lt;&lt; 0);<br>RCC是时钟总开关。GPIOA挂在AHB1第0位。<br>&#x3D; 给GPIOA“通电”，不通电寄存器全部失灵，相当于设备没插电。<br>GPIOA_PUPDR |&#x3D; ((unsigned int)0x01 &lt;&lt; (2 * 5));<br>01&#x3D;内部上拉。PA5上电默认被内部电阻拉到3.3V；<br>如果你不想上下拉，就只写清零那一行，不要加这一句。<br>PA5 普通引脚：随便配置，不用额外代码<br>PA13 PA14 PA15：出厂默认分给下载器JTAG，就算地址代码写对，硬件会抢控制权，必须SYSCFG解除占用，PA5没有这个麻烦！<br>极简记忆口诀</p>
-<ol>
-<li>地址：大门基地址 + 寄存器固定偏移</li>
-<li>2bit寄存器(MODER&#x2F;速度&#x2F;上下拉)：移位 &#x3D; 引脚×2</li>
-<li>1bit寄存器(OTYPER&#x2F;BSRR)：直接 1 &lt;&lt; 引脚号</li>
-<li>第一步永远先开时钟！不开时钟一切配置白费<br>整体代码：<br>&#x2F;*片上外设基地址  *&#x2F;</li>
-</ol>
-<p>#define PERIPH_BASE           ((unsigned int)0x40000000)                          </p>
-<p>&#x2F;*总线基地址 *&#x2F;<br>#define AHB1PERIPH_BASE       (PERIPH_BASE + 0x00020000)	</p>
-<p>&#x2F;<em>GPIO外设基地址</em>&#x2F;<br>#define GPIOF_BASE            (AHB1PERIPH_BASE + 0x1400)<br>&#x2F;<em>GPIO外设基地址</em>&#x2F;<br>#define GPIOA_BASE         (AHB1PERIPH_BASE + 0x0000)<br>例GPIOA<br>#define GPIOA_MODER	       <em>(unsigned int</em>)(GPIOA_BASE+0x00)<br>#define GPIOA_OTYPER       <em>(unsigned int</em>)(GPIOA_BASE+0x04)<br>#define GPIOA_OSPEEDR      <em>(unsigned int</em>)(GPIOA_BASE+0x08)<br>#define GPIOA_PUPDR        <em>(unsigned int</em>)(GPIOA_BASE+0x0C)<br>#define GPIOA_IDR          <em>(unsigned int</em>)(GPIOA_BASE+0x10)<br>#define GPIOA_ODR          <em>(unsigned int</em>)(GPIOA_BASE+0x14)<br>#define GPIOA_BSRR         <em>(unsigned int</em>)(GPIOA_BASE+0x18)<br>#define GPIOA_LCKR         <em>(unsigned int</em>)(GPIOA_BASE+0x1C)<br>#define GPIOA_AFRL         <em>(unsigned int</em>)(GPIOA_BASE+0x20)<br>#define GPIOA_AFRH         <em>(unsigned int</em>)(GPIOA_BASE+0x24)<br>以上可视为函数库</p>
-<p>写寄存器代码的前提 第1行：RCC_AHB1ENR |&#x3D; (1 &lt;&lt; 0);<br>课本知识没有写，但一切GPIO的前提<br>GPIO相当于电器，时钟&#x3D;电源。不开时钟，后面所有寄存器全部失效。<br>GPIOA在AHB1时钟寄存器第0位，写1&#x3D;通电。</p>
-<p>第四. GPIOA_MODER（模式寄存器）<br>理论规则：<br>MODERy[1:0]<br>00：输入（上电默认）<br>01：通用输出<br>10：复用功能<br>11：模拟输入<br>代码：<br>GPIOA_MODER &amp;&#x3D; ~((unsigned int)0x3 &lt;&lt; (2 * 5));<br>GPIOA_MODER |&#x3D; ((unsigned int)0x1 &lt;&lt; (2 * 5));  </p>
-<ol>
-<li>PA5，y&#x3D;5；MODER每个引脚占用2位 → 移位 2*5&#x3D;10</li>
-<li>0x3 &#x3D; 二进制 11<br>&amp;&#x3D; ~(0x3 &lt;&lt;10)：先把PA5对应的两位清0，清除上电默认配置</li>
-<li>0x1 &#x3D; 二进制 01，写入进去<br>最终效果：PA5 设置【通用输出模式】</li>
-</ol>
-<p>第五. GPIOA_OTYPER（输出类型寄存器）<br>理论规则：<br>0：推挽输出（复位默认）<br>1：开漏输出<br>代码：<br>GPIOA_OTYPER &amp;&#x3D; ~(0x1 &lt;&lt; 5);<br>OTYPER每个引脚只占1个位，直接1&lt;&lt;引脚号<br>~(1&lt;&lt;5) 把第5位清0<br>PA5配置成【推挽输出】<br>推挽：能主动输出3.3V高电平、0V低电平，最常用驱动LED</p>
-<p>第六. GPIOA_OSPEEDR（输出速度寄存器）<br>理论规则：<br>00：2MHz<br>01：25MHz<br>10：50MHz<br>11：100MHz<br>代码：<br>GPIOA_OSPEEDR &amp;&#x3D; ~((unsigned int)0x03 &lt;&lt; (2 * 5));<br>GPIOA_OSPEEDR |&#x3D; ((unsigned int)0x00 &lt;&lt; (2 * 5));<br>OSPEEDR和MODER一样，每个引脚2位，移位 &#x3D; 引脚×2<br>先清零两位，再写入00<br> PA5 最大速度 2MHz（低速）<br>日常点灯用低速足够，省电、噪声小</p>
-<p>第七. GPIOA_PUPDR（上下拉寄存器）<br>理论规则：<br>00：无上下拉<br>01：上拉<br>10：下拉<br>11：保留<br>代码：<br>GPIOA_PUPDR &amp;&#x3D; ~((unsigned int)0x03 &lt;&lt; (2 * 5));<br>GPIOA_PUPDR |&#x3D; ((unsigned int)0x01 &lt;&lt; (2 * 5));<br>PUPDR依旧是每个引脚占用2位<br>先清零，写入二进制01<br> PA5开启【内部上拉电阻】<br>小提醒：输出模式开上拉一般很少用，输入模式用得多。如果只是驱动LED，可以删掉这一行，改成只清零 GPIOA_PUPDR &amp;&#x3D; ~((unsigned int)0x03 &lt;&lt; (2 * 5)); 设置成无上下拉</p>
-<p>第八. GPIOA_BSRR（置位&#x2F;复位寄存器）<br>理论规则：<br>BSRR低16位 BSy：写1 → 引脚置高电平<br>BSRR高16位 BRy：写1 → 引脚置低电平<br>代码：<br>GPIOA_BSRR |&#x3D; (1 &lt;&lt; 5);<br>1&lt;&lt;5，对应BS5位写1<br> PA5立即输出高电平（3.3V）</p>
-<p>如果想要拉低，写法：<br>GPIOA_BSRR |&#x3D; (1U &lt;&lt; (16 + 5));<br>重点区分 BSRR 和 ODR</p>
-<p>BSRR 优势：只修改指定引脚，不会影响其他IO，强烈推荐；<br>不要直接写 GPIOA_ODR，多任务下容易冲突。<br>整体总结：这段代码最终配置结果</p>
-<p>PA5：通用推挽输出、2MHz低速、内部上拉、上电直接输出高电平</p>
-<p>万能公式<br>MODER &#x2F; OSPEEDR &#x2F; PUPDR（2位寄存器）<br>寄存器 &amp;&#x3D; ~(0x3 &lt;&lt; (2 * 引脚号)); &#x2F;&#x2F;清空<br>寄存器 |&#x3D; (值 &lt;&lt; (2 * 引脚号));    &#x2F;&#x2F;写入配置<br>OTYPER &#x2F; BSRR &#x2F; IDR &#x2F; ODR（1位寄存器）<br>寄存器 &amp;&#x3D; ~(1 &lt;&lt; 引脚号);<br>寄存器 |&#x3D; (1 &lt;&lt; 引脚号);</p>
-<p>易错点<br>PA13、PA14、PA15：硬件默认JTAG调试功能<br>MODER配置会被硬件强行覆盖，就算代码写的一模一样，引脚不受控制，必须用SYSCFG解除复用<br>PA5&#x2F;PA0~PA12：普通引脚，直接这套代码就能正常运行，没有额外限制</p>
-<p>整体代码：<br>void PA5_Init_F407_Reg(void)<br>{<br>    &#x2F;* 1. 开启 GPIOA 时钟 (AHB1ENR 的第 0 位) *&#x2F;<br>    RCC_AHB1ENR |&#x3D; (1 &lt;&lt; 0);	</p>
-<pre><code>/* 2. MODER寄存器 配置PA5 */
-GPIOA_MODER &amp;= ~((unsigned int)0x3 &lt;&lt; (2 * 5)); 
-GPIOA_MODER |= ((unsigned int)0x1 &lt;&lt; (2 * 5));  
-
-/* 3. OTYPER 输出类型 */
-GPIOA_OTYPER &amp;= ~(0x1 &lt;&lt; 5); 
-
-/* 4. OSPEEDR 输出速度 */
-GPIOA_OSPEEDR &amp;= ~((unsigned int)0x03 &lt;&lt; (2 * 5));
-GPIOA_OSPEEDR |= ((unsigned int)0x00 &lt;&lt; (2 * 5)); 
-
-/* 5. PUPDR 上下拉配置 */
-GPIOA_PUPDR &amp;= ~((unsigned int)0x03 &lt;&lt; (2 * 5));
-GPIOA_PUPDR |= ((unsigned int)0x01 &lt;&lt; (2 * 5));   
-
-/* 6. BSRR 设置PA5输出高电平 */
-GPIOA_BSRR |= (1 &lt;&lt; 5);
-
-while(1);
-</code></pre>
-<p>}</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/21/STM32f407GPIO%E5%AF%84%E5%AD%98%E5%99%A8%E5%AE%9E%E6%93%8D%E7%AC%94%E8%AE%B0/" data-id="cuid9HobVhRuMP8M6ZJsOtdoL" data-title="STM32f407GPIO寄存器实操笔记" class="article-share-link"><span class="fa fa-share">Share</span></a>
-      
-      
-      
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-
-  
-    <article id="post-C语言运算知识" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
-  <div class="article-meta">
-    <a href="/2026/07/20/C%E8%AF%AD%E8%A8%80%E8%BF%90%E7%AE%97%E7%9F%A5%E8%AF%86/" class="article-date">
-  <time class="dt-published" datetime="2026-07-20T07:58:01.000Z" itemprop="datePublished">2026-07-20</time>
-</a>
-    
-  <div class="article-category">
-    <a class="article-category-link" href="/categories/%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0/">编程学习</a>►<a class="article-category-link" href="/categories/%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0/C%E8%AF%AD%E8%A8%80%E5%9F%BA%E7%A1%80/">C语言基础</a>
-  </div>
-
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="p-name article-title" href="/2026/07/20/C%E8%AF%AD%E8%A8%80%E8%BF%90%E7%AE%97%E7%9F%A5%E8%AF%86/">C语言运算知识</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="e-content article-entry" itemprop="articleBody">
-      
-        <p>一.原码，反码，补码<br>电脑&#x2F;单片机只认识二进制 0 和 1，数字分正数、负数，机器靠最高一位区分正负：<br>最高位&#x3D;0 → 正数<br>最高位&#x3D;1 → 负数<br>我们拿1字节（8位二进制）举例，好理解。</p>
-<ol>
-<li><p>原码：给人看得懂的写法<br>规则：<br>最高位符号位，后面正常写数字二进制。<br>举例8位：<br>+5：00000101 （0代表正数）<br>-5：10000101 （1代表负数）<br>缺点：<br> 0有两种写法：00000000（+0）、10000000（-0），重复浪费空间<br> 计算机做减法巨麻烦，硬件不好计算，所以机器不用原码运算</p>
-</li>
-<li><p>反码：过渡产物，只为算补码用<br>规则：<br>正数：反码 &#x3D; 原码（不变）<br>负数：符号位不动，剩下所有0变1、1变0<br>还用8位举例：<br>+5 原码：00000101 → 反码不变：00000101<br>-5 原码：10000101 → 符号1不动，后面取反 → 11111010<br>缺点：<br> 0还是有两个表示，依旧不能直接拿来做减法，只是中间步骤。<br> 3&#x3D;（-2）&#x3D; 00000011+11111101&#x3D;1 000000000（多一位）</p>
-</li>
-<li><p>补码：计算机真正存数字、算数字的格式（重点！）<br>规则<br>正数：补码 &#x3D; 原码 &#x3D; 反码，全程不变<br>负数：负数反码 + 1 &#x3D; 补码<br>举例 -5<br>原码：10000101<br>反码：11111010<br>反码+1 → 补码：11111011</p>
-</li>
-</ol>
-<p>为什么一定要用补码？两大好处<br>解决0重复问题，8位二进制只有一个0：00000000<br>举个例子：计算 5 - 3 &#x3D; 5 + (-3)<br>5补码：00000101<br>-3补码：11111101<br>两者相加：00000010 也就是2，计算正确！</p>
-<p>极简记忆口诀<br> 原码：人看的，正负分开写<br> 反码：负数符号不动，其余全部翻转<br> 补码：正数原样，负数反码加1；电脑存数字、算加减全靠它因此计算机内部用补码&#x3D;</p>
-<p>二.位运算与位运算符<br>单片机、电脑里所有数字底层都是二进制0、1<br>位运算 &#x3D; 直接操作整数类型的二进制里每一个0和1，嵌入式写寄存器、控制引脚</p>
-<p>位运算符有6个</p>
-<ol>
-<li><p>按位与 &amp; （符号：和）<br>规则：两位同时为1，结果才是1；只要有一个0，结果就是0<br>口诀：全1才1，有0则0<br>例：3 &amp; 1<br>3二进制：00000011<br>1二进制：00000001<br>结果：00000001 &#x3D; 1<br>嵌入式用途：清零某一位、读取寄存器某一个引脚状态</p>
-</li>
-<li><p>按位或 | （符号：竖线）<br>规则：任意一位是1，结果就是1；全0才是0<br>口诀：有1则1，全0才0<br>例：3 | 1<br>00000011 | 00000001 &#x3D; 00000011 &#x3D;3<br>嵌入式用途：把指定某一位置1（拉高引脚电平）</p>
-</li>
-<li><p>按位异或 ^<br>规则：两位不一样&#x3D;1，两位相同&#x3D;0<br>口诀：相同出0，不同出1<br>例：3 ^ 1<br>00000011 ^ 00000001 &#x3D; 00000010 &#x3D;2<br>用途：翻转指定二进制位、简单加密、交换数字不用第三方变量</p>
-</li>
-<li><p>按位取反 ~ （单目运算符，只写在数字前面）<br>规则：所有0变1，所有1变0，符号位也一起翻转<br>例：char a&#x3D;3（00000011）<br>~a 全部翻转 &#x3D; 11111100<br>重点：单片机char是有符号数，最高位1代表负数，取反后会变成负数。<br>用途：批量清零多位寄存器</p>
-</li>
-<li><p>按位左移 &lt;&lt;<br>格式：数字 &lt;&lt; 移动位数<br>规则：二进制整体往左挤，右边空出来补0，左边挤出去的数字直接丢掉<br>例：1 &lt;&lt; 2<br>1：00000001<br>左移2位：00000100 等于4<br>隐藏技巧：左移n位 &#x3D; 数字 × 2的n次方</p>
-</li>
-<li><p>按位右移 &gt;&gt;<br>格式：数字 &gt;&gt; 移动位数<br>分两种情况：</p>
-</li>
-<li><p>正数：整体右挤，左边补0</p>
-</li>
-<li><p>负数（补码存储）：整体右挤，左边补1<br>例：4 &gt;&gt; 1<br>4：00000100 → 右移1位 00000010 &#x3D;2<br>—4 &gt;&gt; 1<br>—4：11111100 → 右移1位 11111110 &#x3D;—2<br>隐藏技巧：右移n位 &#x3D; 数字 ÷ 2的n次方（取整数）</p>
-</li>
-</ol>
-<p>嵌入式最常用组合操作（写寄存器必用）</p>
-<ol>
-<li>某一位置1：a |&#x3D; (1&lt;&lt;n)</li>
-<li>某一位清零：a &amp;&#x3D; ~(1&lt;&lt;n)</li>
-<li>翻转某一位：a ^&#x3D; (1&lt;&lt;n)<br>总结</li>
-<li>&amp; 留1清0；| 统一置1；^ 相同归零</li>
-<li>~ 全部翻转；&lt;&lt; 左移翻倍；&gt;&gt; 右移减半</li>
-<li>单片机控制引脚、配置寄存器全部靠位运算，不会改动其他引脚，精准控制单独某一位</li>
-</ol>
-<p>三.复合赋值运算符</p>
-<p>普通写法：a &#x3D; a + 数字<br>意思是：拿a本身的值，加上一个数，算完之后，结果重新存回a里面。<br>复合赋值就是把这行代码简写，少敲重复的a，写单片机代码经常用。<br>复合赋值运算符:将运算和赋值合并为一步的简写方式<br>逐个讲常用6种，配简单例子<br>我们统一设初始值：int a &#x3D; 5;</p>
-<ol>
-<li>加法复合 +&#x3D;<br>简写 a +&#x3D; 3 等价完整写法 a &#x3D; a + 3<br>计算：5+3&#x3D;8，最后a&#x3D;8</li>
-<li>减法复合 -&#x3D;<br>简写 a -&#x3D; 2 等价 a &#x3D; a - 2<br>初始a&#x3D;5，5-2&#x3D;3，最后a&#x3D;3</li>
-<li>乘法复合 *&#x3D;<br>简写 a <em>&#x3D; 4 等价 a &#x3D; a * 4<br>5</em>4&#x3D;20，a变成20</li>
-<li>除法复合 &#x2F;&#x3D;<br>简写 a &#x2F;&#x3D; 2 等价 a &#x3D; a &#x2F; 2<br>5÷2&#x3D;2（整数只留整数部分），a&#x3D;2</li>
-<li>取余复合 %&#x3D;<br>简写 a %&#x3D; 2 等价 a &#x3D; a % 2<br>5除以2余1，a&#x3D;1</li>
-<li>位运算复合（单片机写寄存器天天用！重点）</li>
-<li>a |&#x3D; (1&lt;&lt;2) 等价 a &#x3D; a | (1&lt;&lt;2) 单独把第2位置1</li>
-<li>a &amp;&#x3D; ~(1&lt;&lt;3) 等价 a &#x3D; a &amp; ~(1&lt;&lt;3) 单独把第3位清零</li>
-<li>a ^&#x3D; (1&lt;&lt;1) 等价 a &#x3D; a ^ (1&lt;&lt;1) 翻转第1位电平</li>
-<li>a &lt;&lt;&#x3D; 1 等价 a &#x3D; a &lt;&lt; 1 左移一位翻倍</li>
-<li>a &gt;&gt;&#x3D; 1 等价 a &#x3D; a &gt;&gt; 1 右移一位除以2</li>
-</ol>
-<p>核心记忆口诀<br>符号&#x3D; 等于 自己 符号 数字<br>举个万能模板：a OP&#x3D; b ↔ a &#x3D; a OP b<br>OP就是 + - * &#x2F; % &amp; | ^ &lt;&lt; &gt;&gt; 任意运算符</p>
-<p>易错点</p>
-<ol>
-<li>复合运算符中间不能加空格，不能写成 a + &#x3D; 3，正确 a +&#x3D;3</li>
-<li>等号永远在运算符右边，顺序别写反，没有 &#x3D;+ 这种写法！</li>
-</ol>
-<p>嵌入式实用例子（控制引脚）<br>unsigned int GPIOA &#x3D; 0;<br>GPIOA |&#x3D; (1&lt;&lt;15);   &#x2F;&#x2F; PA15引脚置高<br>GPIOA &amp;&#x3D; ~(1&lt;&lt;15);  &#x2F;&#x2F; PA15引脚清零<br>用复合写法代码更短，是写STM32寄存器标准写法。</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/20/C%E8%AF%AD%E8%A8%80%E8%BF%90%E7%AE%97%E7%9F%A5%E8%AF%86/" data-id="cuidRARzwCz9SOzmobihO7SmY" data-title="C语言运算知识" class="article-share-link"><span class="fa fa-share">Share</span></a>
-      
-      
-      
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">位运算与位运算符</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" rel="tag">原码·反码·补码</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">复合赋值运算符</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" rel="tag">编程入门</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-
-  
 
 
   <nav id="page-nav">
@@ -1108,7 +1118,7 @@ while(1);
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/EXTI/" rel="tag">EXTI</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HSE/" rel="tag">HSE</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HSI/" rel="tag">HSI</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MCO/" rel="tag">MCO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/NVIC/" rel="tag">NVIC</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RCC/" rel="tag">RCC</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/scanf/" rel="tag">scanf</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/systick/" rel="tag">systick</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/typedef/" rel="tag">typedef</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">位运算与位运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%86%85%E6%A0%B8%E5%AE%9A%E6%97%B6%E5%99%A8/" rel="tag">内核定时器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" rel="tag">原码·反码·补码</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">复合赋值运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD/" rel="tag">外部中断</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" rel="tag">寄存器编程</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" rel="tag">按键输入</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%97%B6%E9%92%9F/" rel="tag">时钟</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%AF%AB%E7%A7%92%E5%BB%B6%E6%97%B6/" rel="tag">毫秒延时</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" rel="tag">结构体</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" rel="tag">编程入门</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" rel="tag">编程笔记</a></li></ul>
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/EXTI/" rel="tag">EXTI</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HSE/" rel="tag">HSE</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HSI/" rel="tag">HSI</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MCO/" rel="tag">MCO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/NVIC/" rel="tag">NVIC</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RCC/" rel="tag">RCC</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/USART/" rel="tag">USART</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/scanf/" rel="tag">scanf</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/systick/" rel="tag">systick</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/typedef/" rel="tag">typedef</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%B2%E5%8F%A3/" rel="tag">串口</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">位运算与位运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%86%85%E6%A0%B8%E5%AE%9A%E6%97%B6%E5%99%A8/" rel="tag">内核定时器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" rel="tag">原码·反码·补码</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">复合赋值运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD/" rel="tag">外部中断</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" rel="tag">寄存器编程</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/" rel="tag">嵌入式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">嵌入式寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" rel="tag">按键输入</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%97%B6%E9%92%9F/" rel="tag">时钟</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%A1%86%E5%9B%BE%E5%88%86%E6%9E%90/" rel="tag">框图分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%AF%AB%E7%A7%92%E5%BB%B6%E6%97%B6/" rel="tag">毫秒延时</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" rel="tag">结构体</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" rel="tag">编程入门</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" rel="tag">编程笔记</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE/" rel="tag">通信协议</a></li></ul>
     </div>
   </div>
 
@@ -1118,7 +1128,7 @@ while(1);
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/C%E8%AF%AD%E8%A8%80/" style="font-size: 18px;">C语言</a> <a href="/tags/EXTI/" style="font-size: 12px;">EXTI</a> <a href="/tags/F407/" style="font-size: 20px;">F407</a> <a href="/tags/GPIO/" style="font-size: 16px;">GPIO</a> <a href="/tags/HSE/" style="font-size: 10px;">HSE</a> <a href="/tags/HSI/" style="font-size: 10px;">HSI</a> <a href="/tags/MCO/" style="font-size: 12px;">MCO</a> <a href="/tags/NVIC/" style="font-size: 12px;">NVIC</a> <a href="/tags/RCC/" style="font-size: 12px;">RCC</a> <a href="/tags/STM32/" style="font-size: 20px;">STM32</a> <a href="/tags/scanf/" style="font-size: 10px;">scanf</a> <a href="/tags/systick/" style="font-size: 10px;">systick</a> <a href="/tags/typedef/" style="font-size: 10px;">typedef</a> <a href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">位运算与位运算符</a> <a href="/tags/%E5%86%85%E6%A0%B8%E5%AE%9A%E6%97%B6%E5%99%A8/" style="font-size: 10px;">内核定时器</a> <a href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" style="font-size: 10px;">原码·反码·补码</a> <a href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">复合赋值运算符</a> <a href="/tags/%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD/" style="font-size: 10px;">外部中断</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 14px;">寄存器</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" style="font-size: 10px;">寄存器编程</a> <a href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" style="font-size: 16px;">库函数</a> <a href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" style="font-size: 10px;">按键输入</a> <a href="/tags/%E6%97%B6%E9%92%9F/" style="font-size: 12px;">时钟</a> <a href="/tags/%E6%AF%AB%E7%A7%92%E5%BB%B6%E6%97%B6/" style="font-size: 10px;">毫秒延时</a> <a href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" style="font-size: 10px;">结构体</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" style="font-size: 12px;">编程入门</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" style="font-size: 12px;">编程笔记</a>
+      <a href="/tags/C%E8%AF%AD%E8%A8%80/" style="font-size: 16.67px;">C语言</a> <a href="/tags/EXTI/" style="font-size: 11.67px;">EXTI</a> <a href="/tags/F407/" style="font-size: 18.33px;">F407</a> <a href="/tags/GPIO/" style="font-size: 15px;">GPIO</a> <a href="/tags/HSE/" style="font-size: 10px;">HSE</a> <a href="/tags/HSI/" style="font-size: 10px;">HSI</a> <a href="/tags/MCO/" style="font-size: 11.67px;">MCO</a> <a href="/tags/NVIC/" style="font-size: 11.67px;">NVIC</a> <a href="/tags/RCC/" style="font-size: 11.67px;">RCC</a> <a href="/tags/STM32/" style="font-size: 20px;">STM32</a> <a href="/tags/USART/" style="font-size: 11.67px;">USART</a> <a href="/tags/scanf/" style="font-size: 10px;">scanf</a> <a href="/tags/systick/" style="font-size: 10px;">systick</a> <a href="/tags/typedef/" style="font-size: 10px;">typedef</a> <a href="/tags/%E4%B8%B2%E5%8F%A3/" style="font-size: 11.67px;">串口</a> <a href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">位运算与位运算符</a> <a href="/tags/%E5%86%85%E6%A0%B8%E5%AE%9A%E6%97%B6%E5%99%A8/" style="font-size: 10px;">内核定时器</a> <a href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" style="font-size: 10px;">原码·反码·补码</a> <a href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">复合赋值运算符</a> <a href="/tags/%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD/" style="font-size: 10px;">外部中断</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 13.33px;">寄存器</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" style="font-size: 10px;">寄存器编程</a> <a href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/" style="font-size: 10px;">嵌入式</a> <a href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 10px;">嵌入式寄存器</a> <a href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" style="font-size: 15px;">库函数</a> <a href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" style="font-size: 10px;">按键输入</a> <a href="/tags/%E6%97%B6%E9%92%9F/" style="font-size: 11.67px;">时钟</a> <a href="/tags/%E6%A1%86%E5%9B%BE%E5%88%86%E6%9E%90/" style="font-size: 10px;">框图分析</a> <a href="/tags/%E6%AF%AB%E7%A7%92%E5%BB%B6%E6%97%B6/" style="font-size: 10px;">毫秒延时</a> <a href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" style="font-size: 10px;">结构体</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" style="font-size: 11.67px;">编程入门</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" style="font-size: 11.67px;">编程笔记</a> <a href="/tags/%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE/" style="font-size: 10px;">通信协议</a>
     </div>
   </div>
 
@@ -1127,7 +1137,7 @@ while(1);
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2026/07/">July 2026</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2026/08/">August 2026</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2026/07/">July 2026</a></li></ul>
     </div>
   </div>
 
@@ -1140,23 +1150,23 @@ while(1);
       <ul>
         
           <li>
+            <a href="/2026/08/01/USART%E4%B8%B2%E5%8F%A3%E5%8A%9F%E8%83%BD%E6%A1%86%E5%9B%BE%E6%80%BB%E7%BB%93/">USART串口功能框图总结</a>
+          </li>
+        
+          <li>
+            <a href="/2026/08/01/USART%E4%B8%B2%E5%8F%A3%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE%E7%AE%80%E4%BB%8B%E6%80%BB%E7%BB%93/">USART串口通信协议简介总结</a>
+          </li>
+        
+          <li>
+            <a href="/2026/08/01/%E9%80%9A%E8%AE%AF%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/">通讯的基本概念</a>
+          </li>
+        
+          <li>
             <a href="/2026/07/30/%E7%B3%BB%E7%BB%9F%E6%BB%B4%E7%AD%94%E5%AE%9A%E6%97%B6%E5%99%A8%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/">systick系统滴答定时器操作总结</a>
           </li>
         
           <li>
             <a href="/2026/07/30/EXTI%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD%E6%8E%A7%E5%88%B6%E5%99%A8%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/">EXTI外部中断控制器操作总结</a>
-          </li>
-        
-          <li>
-            <a href="/2026/07/30/%E4%B8%AD%E6%96%AD%E6%A6%82%E5%BF%B5%E7%AC%94%E8%AE%B0/">中断概念笔记</a>
-          </li>
-        
-          <li>
-            <a href="/2026/07/29/MCO%E8%BE%93%E5%87%BA%E7%9B%91%E6%8E%A7%E4%B8%BB%E9%A2%91/">依托 HSE/HSI 内部时钟配置系统时钟 + MCO输出监控主频</a>
-          </li>
-        
-          <li>
-            <a href="/2026/07/29/RCC%E6%97%B6%E9%92%9F%E6%A0%91%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">RCC时钟树学习笔记</a>
           </li>
         
       </ul>
