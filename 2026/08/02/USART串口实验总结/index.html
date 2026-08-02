@@ -4,14 +4,24 @@
   <meta charset="utf-8">
   
   
-  <title>Tag: C语言 | Hexo</title>
+  <title>USART串口实验总结 | Hexo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Hexo">
-<meta property="og:url" content="http://example.com/tags/C%E8%AF%AD%E8%A8%80/index.html">
+  <meta name="description" content="第一、串口收发实验 标准6步初始化流程1、 初始化串口GPIO引脚核心知识点USART的TX、RX引脚不是普通GPIO，需要配置为复用功能（AF）用到结构体：GPIO_InitTypeDef关键函数：GPIO_PinAFConfig()流程：  开启GPIO端口时钟（RCC） 定义GPIO初始化结构体 TX引脚：复用推挽输出 RX引脚：复用浮空输入 &#x2F; 上拉输入 GPIO_Init()完">
+<meta property="og:type" content="article">
+<meta property="og:title" content="USART串口实验总结">
+<meta property="og:url" content="http://example.com/2026/08/02/USART%E4%B8%B2%E5%8F%A3%E5%AE%9E%E9%AA%8C%E6%80%BB%E7%BB%93/index.html">
 <meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="第一、串口收发实验 标准6步初始化流程1、 初始化串口GPIO引脚核心知识点USART的TX、RX引脚不是普通GPIO，需要配置为复用功能（AF）用到结构体：GPIO_InitTypeDef关键函数：GPIO_PinAFConfig()流程：  开启GPIO端口时钟（RCC） 定义GPIO初始化结构体 TX引脚：复用推挽输出 RX引脚：复用浮空输入 &#x2F; 上拉输入 GPIO_Init()完">
 <meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2026-08-02T10:19:24.000Z">
+<meta property="article:modified_time" content="2026-08-02T10:26:14.922Z">
 <meta property="article:author" content="John Doe">
+<meta property="article:tag" content="STM32">
+<meta property="article:tag" content="USART">
+<meta property="article:tag" content="串口">
+<meta property="article:tag" content="串口中断">
+<meta property="article:tag" content="嵌入式">
+<meta property="article:tag" content="通信协议">
 <meta name="twitter:card" content="summary">
   
     <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
@@ -69,115 +79,99 @@
 </header>
 
       <div class="outer">
-        <section id="main">
-  
-  
-    
-    
-      
-      
-      <section class="archives-wrap">
-        <div class="archive-year-wrap">
-          <a href="/archives/2026" class="archive-year">2026</a>
-        </div>
-        <div class="archives">
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2026/07/24/STM32F407%E5%B8%A6%E4%BD%8D%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/" class="archive-article-date">
-  <time class="dt-published" datetime="2026-07-24T09:15:28.000Z" itemprop="datePublished">Jul 24</time>
+        <section id="main"><article id="post-USART串口实验总结" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2026/08/02/USART%E4%B8%B2%E5%8F%A3%E5%AE%9E%E9%AA%8C%E6%80%BB%E7%BB%93/" class="article-date">
+  <time class="dt-published" datetime="2026-08-02T10:19:24.000Z" itemprop="datePublished">2026-08-02</time>
 </a>
-      
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>►<a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E8%AF%BE%E7%A8%8B%E6%80%BB%E7%BB%93/">课程总结</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
   
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2026/07/24/STM32F407%E5%B8%A6%E4%BD%8D%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/">STM32F407带位操作总结</a>
+    <h1 class="p-name article-title" itemprop="headline name">
+      USART串口实验总结
     </h1>
   
 
-    </header>
-  </div>
-</article>
-  
+      </header>
     
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2026/07/20/C%E8%AF%AD%E8%A8%80%E8%BF%90%E7%AE%97%E7%9F%A5%E8%AF%86/" class="archive-article-date">
-  <time class="dt-published" datetime="2026-07-20T07:58:01.000Z" itemprop="datePublished">Jul 20</time>
-</a>
+    <div class="e-content article-entry" itemprop="articleBody">
       
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2026/07/20/C%E8%AF%AD%E8%A8%80%E8%BF%90%E7%AE%97%E7%9F%A5%E8%AF%86/">C语言运算知识</a>
-    </h1>
-  
+        <p>第一、串口收发实验 标准6步初始化流程<br>1、 初始化串口GPIO引脚<br>核心知识点<br>USART的TX、RX引脚不是普通GPIO，需要配置为复用功能（AF）<br>用到结构体：<code>GPIO_InitTypeDef</code><br>关键函数：<code>GPIO_PinAFConfig()</code><br>流程：</p>
+<ol>
+<li>开启GPIO端口时钟（RCC）</li>
+<li>定义GPIO初始化结构体</li>
+<li>TX引脚：复用推挽输出</li>
+<li>RX引脚：复用浮空输入 &#x2F; 上拉输入</li>
+<li><code>GPIO_Init()</code>完成基础配置</li>
+<li>GPIO_PinAFConfig() 指定引脚映射到对应的串口复用功能编号<br> 重点：没有配置AF复用功能，串口无法正常收发数据！</li>
+</ol>
+<p>2、初始化串口外设 USART<br>用到结构体：<code>USART_InitTypeDef</code><br>内部配置项：</p>
+<ul>
+<li>波特率</li>
+<li>数据位长度（8bit）</li>
+<li>停止位数量</li>
+<li>校验位（无校验&#x2F;奇&#x2F;偶校验）</li>
+<li>硬件流控（初学关闭）</li>
+<li>模式：收发使能（Tx+Rx，全双工）<br>调用函数：<code>USART_Init()</code></li>
+</ul>
+<p>3、中断配置（接收中断必备）</p>
+<ol>
+<li>开启USART外设时钟</li>
+<li>开启串口接收中断使能 <code>USART_ITConfig()</code></li>
+<li>配置NVIC：设置中断抢占优先级、子优先级，使能中断通道<br> 如果只做单纯发送、不需要接收，可以暂时跳过中断配置。</li>
+</ol>
+<p>4、使能串口外设<br><code>USART_Cmd(USARTx, ENABLE);</code><br>所有参数配置完成后，最后打开串口总开关，外设正式开始工作。</p>
+<p>5、编写发送函数、接收读取函数<br>发送函数逻辑<br>等待 <code>TXE</code>标志位，将数据写入DR寄存器，硬件自动串行发送。<br>接收读取逻辑<br>中断触发后，直接读取 <code>USART_ReceiveData()</code> 获取收到的字节。</p>
+<p>6、编写中断服务函数<br>函数名固定，启动文件预先定义：<code>USARTx_IRQHandler()</code><br>内部逻辑：</p>
+<ol>
+<li>判断中断来源（接收中断标志 <code>USART_IT_RXNE</code>）</li>
+<li>如果是接收中断，读取收到的数据</li>
+<li>可把数据存入缓冲区，供主函数调用</li>
+</ol>
+<p>第二、课件四大拓展问题细致解答<br>1、如何发送16位数据？<br>原理<br>标准串口一帧最多一次传输8bit（1字节），硬件原生不支持直接一次性发送16位<br>两种实现方案<br>方案1：拆分高低字节（最常用）<br>uint16_t data &#x3D; 0x1234;<br>Send_Byte( data &gt;&gt; 8 );   &#x2F;&#x2F; 先发高8位 0x12<br>Send_Byte( data &amp; 0xFF );&#x2F;&#x2F; 再发低8位 0x34<br>接收端按照同样顺序拼接两个字节，还原16位数据。<br>方案2：修改串口帧格式（极少使用）<br>配置USART为9位数据模式（包含校验位充当第9bit），上限仅9bit，依然达不到16bit。<br>结论：工程统一采用高低字节拆分传输。</p>
+<p>2、如何发送一个数组？<br>循环调用单字节发送函数，遍历数组逐个发送。<br>示例代码：<br>void Send_Array(uint8_t *buf, uint16_t len)<br>{<br>    uint16_t i;<br>    for(i&#x3D;0; i&lt;len; i++)<br>    {<br>        Send_Byte(buf[i]);<br>    }<br>}<br>调用：<br>uint8_t arr[] &#x3D; {0x11,0x22,0x33};<br>Send_Array(arr, sizeof(arr));</p>
+<p>3、如何使用printf()打印输出<br>底层原理<br>printf 标准库默认输出到电脑屏幕，我们需要重定向fputc函数，把printf输出的字符转发到串口发送函数。<br>核心重定向模板（F4标准库）：<br>int fputc(int ch, FILE *f)<br>{<br>    USART_SendData(USART1, (uint8_t)ch);<br>    while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) &#x3D;&#x3D; RESET);<br>    return ch;<br>}<br> KEIL注意事项：<br>需要勾选：Use MicroLIB（微型库），否则部分版本重定向会失效。<br>重定向完成后，就可以直接使用：<br>printf(“测试数值 &#x3D; %d\r\n”, 123);</p>
+<p>4、电脑串口助手发送过来的数据是什么格式？<br>核心结论：<br>物理线路上永远传输二进制字节（0&#x2F;1比特流），不存在十进制、十六进制区分！格式只由【串口助手显示模式】决定。</p>
+<ol>
+<li>字符模式（ASCII模式）<br>你发送 A → 线路传输字节 0x41<br>单片机收到：0x41（ASCII编码）</li>
+<li>十六进制模式（HEX发送）<br>你输入 41，助手直接发送字节 0x41<br>看起来结果一样，但逻辑不同：<br>字符模式输入”41”，会发送两个字节 0x34、0x31（’4’和’1’的ASCII码）<br>通俗区分<br>• 十进制、十六进制：只是人类观察数字的书写形式<br>• 线路、单片机寄存器里，只有原始8位二进制字节<br>高频踩坑：<br>很多新手混淆：串口助手发数字“10”<br>字符模式：发送两个字节 ‘1’(0x31)、’0’(0x30)<br>HEX模式：发送一个字节 0x10</li>
+</ol>
+<p>补充串联总结<br>前面6步是串口底层硬件初始化标准流水线；后面4个问题是工程最常用的上层封装技巧。<br>学习顺序建议：<br>单字节收发 → 数组发送 → 16位数据分包传输 → printf重定向 → 电脑端收发格式区分。<br>你直接保存为md放入<code>_posts</code>，和之前串口框图、通信概念笔记串联成套。<br>需要我把整套串口初始化标准库完整代码一并写出来吗？</p>
 
-    </header>
-  </div>
-</article>
-  
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2026/07/19/C%E8%AF%AD%E8%A8%80%E5%85%B3%E4%BA%8Escanf%E5%92%8Ctypedef%E7%9A%84%E7%AC%94%E8%AE%B0/" class="archive-article-date">
-  <time class="dt-published" datetime="2026-07-19T07:31:28.000Z" itemprop="datePublished">Jul 19</time>
-</a>
       
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2026/07/19/C%E8%AF%AD%E8%A8%80%E5%85%B3%E4%BA%8Escanf%E5%92%8Ctypedef%E7%9A%84%E7%AC%94%E8%AE%B0/">C语言关于scanf,typedef的笔记</a>
-    </h1>
-  
-
-    </header>
-  </div>
-</article>
-  
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2026/07/18/C%E8%AF%AD%E8%A8%80%E7%BB%93%E6%9E%84%E4%BD%93%E7%AC%94%E8%AE%B0/" class="archive-article-date">
-  <time class="dt-published" datetime="2026-07-18T14:53:00.000Z" itemprop="datePublished">Jul 18</time>
-</a>
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2026/08/02/USART%E4%B8%B2%E5%8F%A3%E5%AE%9E%E9%AA%8C%E6%80%BB%E7%BB%93/" data-id="cuidC2TLRCkEH0Zf30WGsGU6H" data-title="USART串口实验总结" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2026/07/18/C%E8%AF%AD%E8%A8%80%E7%BB%93%E6%9E%84%E4%BD%93%E7%AC%94%E8%AE%B0/">C语言结构体笔记</a>
-    </h1>
-  
-
-    </header>
-  </div>
-</article>
-  
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2026/07/18/chenge-first-blog/" class="archive-article-date">
-  <time class="dt-published" datetime="2026-07-18T09:06:47.000Z" itemprop="datePublished">Jul 18</time>
-</a>
       
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2026/07/18/chenge-first-blog/">change-first-blog</a>
-    </h1>
-  
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/USART/" rel="tag">USART</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E4%B8%B2%E5%8F%A3/" rel="tag">串口</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E4%B8%B2%E5%8F%A3%E4%B8%AD%E6%96%AD/" rel="tag">串口中断</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/" rel="tag">嵌入式</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE/" rel="tag">通信协议</a></li></ul>
 
-    </header>
+    </footer>
   </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2026/08/01/USART%E4%B8%B2%E5%8F%A3%E5%8A%9F%E8%83%BD%E6%A1%86%E5%9B%BE%E6%80%BB%E7%BB%93/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">USART串口功能框图总结</div>
+    </a>
+  
+</nav>
+
+  
 </article>
-  
-  
-    </div></section>
-  
 
 
 </section>
