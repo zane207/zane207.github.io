@@ -71,6 +71,175 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-RCC时钟树学习笔记" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2026/07/29/RCC%E6%97%B6%E9%92%9F%E6%A0%91%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" class="article-date">
+  <time class="dt-published" datetime="2026-07-29T07:37:40.000Z" itemprop="datePublished">2026-07-29</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>►<a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E8%AF%BE%E7%A8%8B%E6%80%BB%E7%BB%93/">课程总结</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2026/07/29/RCC%E6%97%B6%E9%92%9F%E6%A0%91%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">RCC时钟树学习笔记</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>STM32F407 RCC+时钟树<br>一、基础概念</p>
+<ol>
+<li>RCC全称：复位和时钟控制器（Reset &amp; Clock Control）<br>作用：掌管芯片所有时钟开启、频率升降、总线分频、外设时钟开关，相当于整个单片机的总电源+调速开关；所有外设（GPIO、定时器、串口）必须开启时钟才能工作</li>
+<li>时钟树：时钟从源头出发，经过分频、倍频、逐级分流，流向CPU、各类总线、外设的完整流向结构图</li>
+</ol>
+<p>二、5个原始时钟源头（所有频率的根基）<br>高速时钟（给CPU、主系统用）</p>
+<ol>
+<li>HSI：内部高速RC时钟（16MHz）<br>上电默认时钟，芯片内部自带，不用外接晶振；缺点：精度差、温漂大<br>上电瞬间单片机先跑这个低速时钟，执行时钟初始化代码，切换到高精度HSE&#x2F;PLL</li>
+<li>HSE：外部高速晶振（标配8MHz）(范围4-26MHz)<br>开发板焊接外部石英晶振，精度极高、稳定；配置168MHz主频唯一首选源头<br>低速时钟（仅低功耗计时器件使用）</li>
+<li>LSE：外部32.768KHz晶振<br>专门给RTC实时时钟提供基准，断电靠纽扣电池走时间</li>
+<li>LSI：内部低速RC时钟（32KHz）<br>精度差，只给独立看门狗、待机唤醒使用</li>
+<li>双PLL锁相环（频率倍增核心模块）<br>• 主PLL（PLL）：你一直在配置的模块，把25MHz低频晶振拉升成168MHz高频系统时钟，同时分出48MHz固定时钟供给USB（必须严格48MHz才能识别U盘）<br>计算公式：SYSCLK &#x3D; (HSE ÷ M) × N ÷ P<br>经典参数：M&#x3D;25、N&#x3D;336、P&#x3D;2 → (8&#x2F;8)*336&#x2F;2 &#x3D; 168MHz；Q&#x3D;7专门算出48MHz给USB<br>• PLLI2S：音频专用锁相环，播放音乐用，日常点灯几乎用不到</li>
+</ol>
+<p>三、时钟主干完整流向<br>HSE(25MHz) → PLL分频倍频 → SYSCLK(168MHz系统总时钟) → 分成3路总线时钟</p>
+<ol>
+<li>SYSCLK：系统总时钟（最高168MHz）<br>整个芯片最高频率时钟，供给内核CPU、Flash存储器；可三选一来源：HSI &#x2F; HSE &#x2F; PLL输出（我们固定选PLL）</li>
+<li>三级总线分频（RCC-&gt;CFGR寄存器配置）<br>SYSCLK向下分频，分出3条马路，不同外设分配不同速度，兼顾性能+省电：</li>
+<li>HCLK（AHB总线时钟）<br>默认不分频：HCLK &#x3D; SYSCLK &#x3D; 168MHz<br>承载：CPU内核、DMA内存搬运、Flash、高速存储器、以太网等核心硬件，主干道全速跑</li>
+<li>PCLK2（APB2高速外设总线）<br>二分频：PCLK2 &#x3D; HCLK ÷ 2 &#x3D; 84MHz<br>承载：GPIO所有引脚、ADC、高级定时器、串口1等高速外设（LED引脚挂载在这里）<br>规则：APB2最大上限84MHz。</li>
+<li>PCLK1（APB1低速外设总线）<br>四分频：PCLK1 &#x3D; HCLK ÷ 4 &#x3D; 42MHz<br>承载：普通串口、I2C、基础定时器、看门狗等低速外设；上限最高42MHz。<br>补充规则：如果APB总线分频系数≥2，挂载上面的定时器时钟会自动翻倍，方便定时计算<br>四、外设时钟开关逻辑<br>每条总线下面挂载一堆外设，默认全部关闭时钟，必须通过RCC寄存器手动开启对应外设时钟，硬件才会通电工作：<br>例：开启GPIOA引脚时钟：RCC-&gt;AHB1ENR |&#x3D; RCC_AHB1ENR_GPIOAEN;<br>不开这句，LED引脚初始化完全无效，灯不会亮</li>
+</ol>
+<p>五、配套关键硬件设置（代码里的FLASH等待周期）<br>CPU高速读取Flash里的程序时，Flash硬件速度跟不上168MHz主频，需要设置等待周期（LATENCY）：<br>• 168MHz：必须配置5个等待周期<br>• 主频降低，等待周期同步减小，否则程序运行时序错乱、延时无变化</p>
+<p>六、上电完整启动流程（对应你的SetSysClock函数执行步骤）</p>
+<ol>
+<li>上电默认跑HSI内部16MHz低速时钟；</li>
+<li>开启外部HSE 25MHz晶振，等待晶振震荡稳定；</li>
+<li>配置PLL的M&#x2F;N&#x2F;P&#x2F;Q参数，算出168MHz主频+48MHz USB时钟；</li>
+<li>开启PLL，等待PLL倍频稳定就绪；</li>
+<li>设置Flash读写等待周期，适配当前主频；</li>
+<li>将系统时钟SYSCLK切换为PLL输出的168MHz；</li>
+<li>配置AHB、APB1、APB2总线分频比例；</li>
+<li>后续main函数里开启GPIO时钟、初始化引脚、点灯循环</li>
+</ol>
+<p>七、MCO是什么<br>MCO &#x3D; 单片机时钟输出引脚<br>芯片预留了专门引脚，可以把芯片内部看不见的各种时钟信号引到芯片外面</p>
+<p>八、输出监控系统时钟，拆开含义</p>
+<ol>
+<li>系统时钟（SYSCLK）：就是你用PLL配置的168MHz总主频，CPU运行的基准时钟，封在芯片内部，肉眼、万用表都测不到；</li>
+<li>输出：把SYSCLK信号接到MCO引脚上；</li>
+<li>监控：拿示波器接这个引脚，查看波形频率。</li>
+<li>作用（你现在最需要的）<br>一次次修改PLL的N数值、调整主频，心里没法确认：<br>单片机到底有没有真正跑到 168M &#x2F; 84M？<br>PLL有没有锁定成功？时钟配置写错有没有乱频？<br>开启MCO输出SYSCLK之后：<br>示波器测出多少赫兹，就代表当前单片机实际主频是多少，用来验证你的时钟代码是否正确</li>
+</ol>
+<p>九、F407实操细节</p>
+<ol>
+<li>选用 MCO2（PC9引脚），专门可以输出SYSCLK系统主时钟；</li>
+<li>注意限制：GPIO引脚最高承受100Mhz信号，168MHz超出上限，必须内部二分频输出；</li>
+<li>举例：<br>168MHz二分频输出 → 引脚测出来84MHz波形，就证明系统时钟确实是168MHz，配置无误</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2026/07/29/RCC%E6%97%B6%E9%92%9F%E6%A0%91%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" data-id="cuid0hfcs7-An1puB7GRMFi8a" data-title="RCC时钟树学习笔记" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MCO/" rel="tag">MCO</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/RCC/" rel="tag">RCC</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%97%B6%E9%92%9F/" rel="tag">时钟</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="post-STM32F407带位操作总结" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2026/07/24/STM32F407%E5%B8%A6%E4%BD%8D%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/" class="article-date">
+  <time class="dt-published" datetime="2026-07-24T09:15:28.000Z" itemprop="datePublished">2026-07-24</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2026/07/24/STM32F407%E5%B8%A6%E4%BD%8D%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/">STM32F407带位操作总结</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>STM32 位带操作 小白通俗讲解笔记（可直接存入GitHub嵌入式分类）</p>
+<p>一、什么是位带？<br>单片机寄存器都是 32位 的，一个寄存器里面挤了32个引脚电平（每1位代表1个引脚：0低电平、1高电平）<br>正常写法想单独修改其中某1个引脚：<br>要先把整个寄存器数值读出来 → 掩码清零目标位 → 赋值1&#x2F;0 → 写回寄存器，代码繁琐</p>
+<p>位带（Bit-Band）就是ST给F1&#x2F;F4系列单片机设计的快捷机制：<br>把寄存器里每1个二进制位，单独映射成1个完整32位内存地址<br>直接给这个专属地址赋值 1 或 0，就能只修改单个引脚电平，不用复杂位运算</p>
+<p>举例子：<br>ODR输出寄存器第6位（PF6引脚），对应一个独立地址<br>PFout(6) &#x3D; 1; 直接拉高PF6<br>PFout(6) &#x3D; 0; 直接拉低PF6</p>
+<p>二、位带两大区域（STM32F4）<br>单片机内存划分两块支持位带的区域：</p>
+<ol>
+<li>外设位带区：片上所有GPIO、定时器等外设寄存器<br>我们点灯、操作引脚只用这一块</li>
+<li>SRAM位带区：内存变量<br>规则：<br>原始1bit（1个位） → 映射别名区占用 4字节（1个32位地址）<br>原始1个位带区地址 &#x3D; 别名区基础地址 + 偏移计算得来</li>
+</ol>
+<p>三、位带地址计算公式拆解（你代码里的宏逐句翻译）</p>
+<ol>
+<li>核心计算公式宏</li>
+</ol>
+<p>#define BITBAND(addr, bitnum) ((addr &amp; 0xF0000000)+0x02000000+((addr &amp; 0x000FFFFF)&lt;&lt;5)+(bitnum&lt;&lt;2))<br>代码解释：</p>
+<ol>
+<li>addr &amp; 0xF0000000：取出外设寄存器所在大区基地址（外设都是0x40000000开头）</li>
+<li>+0x02000000：跳到位带别名区起始地址</li>
+<li>(addr &amp; 0x000FFFFF)&lt;&lt;5：原始寄存器整体偏移换算别名区偏移，左移5 &#x3D; ×32</li>
+<li>bitnum&lt;&lt;2：指定要操作的第几位，左移2 &#x3D; ×4（1位占4字节空间）<br>最终算出：某寄存器第bitnum个位 对应的位带别名地址</li>
+<li>指针访问宏</li>
+</ol>
+<p>#define MEM(addr)  (*(volatile unsigned long *)(addr))<br>• volatile：强制每次都去硬件地址读取，不被编译器优化（单片机寄存器必备关键字）<br>• 把数字地址强制转为指针，解引用后可以直接赋值读写<br>3. 封装整合宏<br>#define BIT_ADDR(addr, bitnum)  MEM(BITBAND(addr, bitnum))<br>输入：寄存器原始地址 + 要操作的位序号<br>输出：可直接赋值的位带地址<br>4. 引脚快捷操作宏（以GPIOF为例）<br>#define GPIOF_ODR_ADDR    (GPIOF_BASE+0x14)  &#x2F;&#x2F;GPIOF输出寄存器地址<br>#define PFout(n)      BIT_ADDR(GPIOF_ODR_ADDR, n)<br>调用：<br>PFout(5)&#x3D;1; 拉高PF5引脚<br>PFout(5)&#x3D;0; 拉低PF5引脚</p>
+<p>四、传统写法 VS 位带写法对比<br>需求：把PF6引脚置低电平<br>老式寄存器写法<br>GPIOF_ODR &amp;&#x3D; ~(1&lt;&lt;6);<br>需要手动用按位取反、与运算，新手很容易写错位数<br>位带极简写法<br>PFout(6) &#x3D; 0;<br>数字对应引脚号，直观好记，几乎不会出错</p>
+<p>五、位带优缺点<br>优点</p>
+<ol>
+<li>代码极简，读写单个IO引脚超级方便</li>
+<li>可读性极高，新手友好</li>
+<li>底层硬件实现，执行效率很高<br>缺点</li>
+<li>仅STM32 F1、F4系列支持；H7、L4等新款芯片取消了位带功能，不能通用</li>
+<li>只能操作：GPIO输出寄存器ODR、输入寄存器IDR、内存变量；其他寄存器场景受限</li>
+</ol>
+<p>六、完整可编译整套位带代码（F407）<br>&#x2F;&#x2F;位带基础宏定义<br>#define BITBAND(addr, bitnum) ((addr &amp; 0xF0000000)+0x02000000+((addr &amp; 0x000FFFFF)&lt;&lt;5)+(bitnum&lt;&lt;2))<br>#define MEM(addr)              (*(volatile unsigned long *)(addr))<br>#define BIT_ADDR(addr, bitnum) MEM(BITBAND(addr, bitnum))</p>
+<p>&#x2F;&#x2F;GPIOF输出引脚位带操作<br>#define GPIOF_ODR_ADDR  (GPIOF_BASE + 0x14)<br>#define PFout(n)        BIT_ADDR(GPIOF_ODR_ADDR, n)</p>
+<p>&#x2F;&#x2F;GPIOB、GPIOA可以照抄拓展<br>#define GPIOA_ODR_ADDR  (GPIOA_BASE + 0x14)<br>#define PAout(n)        BIT_ADDR(GPIOA_ODR_ADDR, n)</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2026/07/24/STM32F407%E5%B8%A6%E4%BD%8D%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/" data-id="cuid8xOVAVE_-Pifa5aQHCZdo" data-title="STM32F407带位操作总结" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" rel="tag">寄存器编程</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
     <article id="post-GPIO按键检测实操总结" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
     <a href="/2026/07/23/GPIO%E6%8C%89%E9%94%AE%E6%A3%80%E6%B5%8B%E5%AE%9E%E6%93%8D%E6%80%BB%E7%BB%93/" class="article-date">
@@ -766,62 +935,11 @@ return 0;
 
 
   
-    <article id="post-hello-world" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
-  <div class="article-meta">
-    <a href="/2026/07/18/hello-world/" class="article-date">
-  <time class="dt-published" datetime="2026-07-18T08:27:43.746Z" itemprop="datePublished">2026-07-18</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="p-name article-title" href="/2026/07/18/hello-world/">Hello World</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="e-content article-entry" itemprop="articleBody">
-      
-        <p>Welcome to <a target="_blank" rel="noopener" href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a target="_blank" rel="noopener" href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a target="_blank" rel="noopener" href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a target="_blank" rel="noopener" href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
-
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/writing.html">Writing</a></p>
-<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/server.html">Server</a></p>
-<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/generating.html">Generating</a></p>
-<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/18/hello-world/" data-id="cuidfW3Aa3Z2mJPoq2iotbQDY" data-title="Hello World" class="article-share-link"><span class="fa fa-share">Share</span></a>
-      
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-
-  
 
 
   <nav id="page-nav">
     
-    <a class="extend prev" rel="prev" href="/">&laquo; Prev</a><a class="page-number" href="/">1</a><span class="page-number current">2</span>
+    <a class="extend prev" rel="prev" href="/">&laquo; Prev</a><a class="page-number" href="/">1</a><span class="page-number current">2</span><a class="page-number" href="/page/3/">3</a><a class="extend next" rel="next" href="/page/3/">Next &raquo;</a>
   </nav>
 
 </section>
@@ -842,7 +960,7 @@ return 0;
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/EXTI/" rel="tag">EXTI</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HSE/" rel="tag">HSE</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HSI/" rel="tag">HSI</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MCO/" rel="tag">MCO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/NVIC/" rel="tag">NVIC</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RCC/" rel="tag">RCC</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/USART/" rel="tag">USART</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/scanf/" rel="tag">scanf</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/systick/" rel="tag">systick</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/typedef/" rel="tag">typedef</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%B2%E5%8F%A3/" rel="tag">串口</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%B2%E5%8F%A3%E4%B8%AD%E6%96%AD/" rel="tag">串口中断</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">位运算与位运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%86%85%E6%A0%B8%E5%AE%9A%E6%97%B6%E5%99%A8/" rel="tag">内核定时器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" rel="tag">原码·反码·补码</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">复合赋值运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD/" rel="tag">外部中断</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" rel="tag">寄存器编程</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/" rel="tag">嵌入式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">嵌入式寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" rel="tag">按键输入</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%97%B6%E9%92%9F/" rel="tag">时钟</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%A1%86%E5%9B%BE%E5%88%86%E6%9E%90/" rel="tag">框图分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%AF%AB%E7%A7%92%E5%BB%B6%E6%97%B6/" rel="tag">毫秒延时</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" rel="tag">结构体</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" rel="tag">编程入门</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" rel="tag">编程笔记</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE/" rel="tag">通信协议</a></li></ul>
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/DMA/" rel="tag">DMA</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/EXTI/" rel="tag">EXTI</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HSE/" rel="tag">HSE</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HSI/" rel="tag">HSI</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/M-M/" rel="tag">M-M</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/M-P/" rel="tag">M-P</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MCO/" rel="tag">MCO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/NVIC/" rel="tag">NVIC</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RCC/" rel="tag">RCC</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/USART/" rel="tag">USART</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/scanf/" rel="tag">scanf</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/systick/" rel="tag">systick</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/typedef/" rel="tag">typedef</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%B2%E5%8F%A3/" rel="tag">串口</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%B2%E5%8F%A3%E4%B8%AD%E6%96%AD/" rel="tag">串口中断</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">位运算与位运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%86%85%E6%A0%B8%E5%AE%9A%E6%97%B6%E5%99%A8/" rel="tag">内核定时器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" rel="tag">原码·反码·补码</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">复合赋值运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD/" rel="tag">外部中断</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" rel="tag">寄存器编程</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/" rel="tag">嵌入式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">嵌入式寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" rel="tag">按键输入</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%97%B6%E9%92%9F/" rel="tag">时钟</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%A1%86%E5%9B%BE%E5%88%86%E6%9E%90/" rel="tag">框图分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%AF%AB%E7%A7%92%E5%BB%B6%E6%97%B6/" rel="tag">毫秒延时</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%9B%B4%E6%8E%A5%E5%AD%98%E5%82%A8%E5%99%A8%E8%AE%BF%E9%97%AE/" rel="tag">直接存储器访问</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" rel="tag">结构体</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" rel="tag">编程入门</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" rel="tag">编程笔记</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE/" rel="tag">通信协议</a></li></ul>
     </div>
   </div>
 
@@ -852,7 +970,7 @@ return 0;
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/C%E8%AF%AD%E8%A8%80/" style="font-size: 16.67px;">C语言</a> <a href="/tags/EXTI/" style="font-size: 11.67px;">EXTI</a> <a href="/tags/F407/" style="font-size: 18.33px;">F407</a> <a href="/tags/GPIO/" style="font-size: 15px;">GPIO</a> <a href="/tags/HSE/" style="font-size: 10px;">HSE</a> <a href="/tags/HSI/" style="font-size: 10px;">HSI</a> <a href="/tags/MCO/" style="font-size: 11.67px;">MCO</a> <a href="/tags/NVIC/" style="font-size: 11.67px;">NVIC</a> <a href="/tags/RCC/" style="font-size: 11.67px;">RCC</a> <a href="/tags/STM32/" style="font-size: 20px;">STM32</a> <a href="/tags/USART/" style="font-size: 13.33px;">USART</a> <a href="/tags/scanf/" style="font-size: 10px;">scanf</a> <a href="/tags/systick/" style="font-size: 10px;">systick</a> <a href="/tags/typedef/" style="font-size: 10px;">typedef</a> <a href="/tags/%E4%B8%B2%E5%8F%A3/" style="font-size: 13.33px;">串口</a> <a href="/tags/%E4%B8%B2%E5%8F%A3%E4%B8%AD%E6%96%AD/" style="font-size: 10px;">串口中断</a> <a href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">位运算与位运算符</a> <a href="/tags/%E5%86%85%E6%A0%B8%E5%AE%9A%E6%97%B6%E5%99%A8/" style="font-size: 10px;">内核定时器</a> <a href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" style="font-size: 10px;">原码·反码·补码</a> <a href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">复合赋值运算符</a> <a href="/tags/%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD/" style="font-size: 10px;">外部中断</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 13.33px;">寄存器</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" style="font-size: 10px;">寄存器编程</a> <a href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/" style="font-size: 11.67px;">嵌入式</a> <a href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 10px;">嵌入式寄存器</a> <a href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" style="font-size: 15px;">库函数</a> <a href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" style="font-size: 10px;">按键输入</a> <a href="/tags/%E6%97%B6%E9%92%9F/" style="font-size: 11.67px;">时钟</a> <a href="/tags/%E6%A1%86%E5%9B%BE%E5%88%86%E6%9E%90/" style="font-size: 10px;">框图分析</a> <a href="/tags/%E6%AF%AB%E7%A7%92%E5%BB%B6%E6%97%B6/" style="font-size: 10px;">毫秒延时</a> <a href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" style="font-size: 10px;">结构体</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" style="font-size: 11.67px;">编程入门</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" style="font-size: 11.67px;">编程笔记</a> <a href="/tags/%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE/" style="font-size: 11.67px;">通信协议</a>
+      <a href="/tags/C%E8%AF%AD%E8%A8%80/" style="font-size: 16.67px;">C语言</a> <a href="/tags/DMA/" style="font-size: 11.67px;">DMA</a> <a href="/tags/EXTI/" style="font-size: 11.67px;">EXTI</a> <a href="/tags/F407/" style="font-size: 18.33px;">F407</a> <a href="/tags/GPIO/" style="font-size: 15px;">GPIO</a> <a href="/tags/HSE/" style="font-size: 10px;">HSE</a> <a href="/tags/HSI/" style="font-size: 10px;">HSI</a> <a href="/tags/M-M/" style="font-size: 10px;">M-M</a> <a href="/tags/M-P/" style="font-size: 10px;">M-P</a> <a href="/tags/MCO/" style="font-size: 11.67px;">MCO</a> <a href="/tags/NVIC/" style="font-size: 11.67px;">NVIC</a> <a href="/tags/RCC/" style="font-size: 11.67px;">RCC</a> <a href="/tags/STM32/" style="font-size: 20px;">STM32</a> <a href="/tags/USART/" style="font-size: 13.33px;">USART</a> <a href="/tags/scanf/" style="font-size: 10px;">scanf</a> <a href="/tags/systick/" style="font-size: 10px;">systick</a> <a href="/tags/typedef/" style="font-size: 10px;">typedef</a> <a href="/tags/%E4%B8%B2%E5%8F%A3/" style="font-size: 13.33px;">串口</a> <a href="/tags/%E4%B8%B2%E5%8F%A3%E4%B8%AD%E6%96%AD/" style="font-size: 10px;">串口中断</a> <a href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">位运算与位运算符</a> <a href="/tags/%E5%86%85%E6%A0%B8%E5%AE%9A%E6%97%B6%E5%99%A8/" style="font-size: 10px;">内核定时器</a> <a href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" style="font-size: 10px;">原码·反码·补码</a> <a href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">复合赋值运算符</a> <a href="/tags/%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD/" style="font-size: 10px;">外部中断</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 13.33px;">寄存器</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" style="font-size: 10px;">寄存器编程</a> <a href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/" style="font-size: 11.67px;">嵌入式</a> <a href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 10px;">嵌入式寄存器</a> <a href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" style="font-size: 15px;">库函数</a> <a href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" style="font-size: 10px;">按键输入</a> <a href="/tags/%E6%97%B6%E9%92%9F/" style="font-size: 11.67px;">时钟</a> <a href="/tags/%E6%A1%86%E5%9B%BE%E5%88%86%E6%9E%90/" style="font-size: 10px;">框图分析</a> <a href="/tags/%E6%AF%AB%E7%A7%92%E5%BB%B6%E6%97%B6/" style="font-size: 10px;">毫秒延时</a> <a href="/tags/%E7%9B%B4%E6%8E%A5%E5%AD%98%E5%82%A8%E5%99%A8%E8%AE%BF%E9%97%AE/" style="font-size: 11.67px;">直接存储器访问</a> <a href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" style="font-size: 10px;">结构体</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" style="font-size: 11.67px;">编程入门</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" style="font-size: 11.67px;">编程笔记</a> <a href="/tags/%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE/" style="font-size: 11.67px;">通信协议</a>
     </div>
   </div>
 
@@ -874,6 +992,14 @@ return 0;
       <ul>
         
           <li>
+            <a href="/2026/08/03/%E9%85%8D%E7%BD%AEDMA%E7%94%B1M-M%E5%92%8CM-P%E7%9A%84%E4%BB%A3%E7%A0%81%E6%80%BB%E7%BB%93/">配置DMA由M-M和M-P的代码总结</a>
+          </li>
+        
+          <li>
+            <a href="/2026/08/03/DMA%E7%9F%A5%E8%AF%86%E6%80%BB%E7%BB%93/">DMA知识总结</a>
+          </li>
+        
+          <li>
             <a href="/2026/08/02/USART%E4%B8%B2%E5%8F%A3%E5%AE%9E%E9%AA%8C%E6%80%BB%E7%BB%93/">USART串口实验总结</a>
           </li>
         
@@ -883,14 +1009,6 @@ return 0;
         
           <li>
             <a href="/2026/08/01/USART%E4%B8%B2%E5%8F%A3%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE%E7%AE%80%E4%BB%8B%E6%80%BB%E7%BB%93/">USART串口通信协议简介总结</a>
-          </li>
-        
-          <li>
-            <a href="/2026/08/01/%E9%80%9A%E8%AE%AF%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/">通讯的基本概念</a>
-          </li>
-        
-          <li>
-            <a href="/2026/07/30/%E7%B3%BB%E7%BB%9F%E6%BB%B4%E7%AD%94%E5%AE%9A%E6%97%B6%E5%99%A8%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/">systick系统滴答定时器操作总结</a>
           </li>
         
       </ul>

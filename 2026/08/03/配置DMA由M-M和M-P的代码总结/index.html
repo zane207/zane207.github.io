@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>配置DMA由M-M和M-P的代码总结 | Hexo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="一、DMA_InitTypeDef 初始化结构体逐成员详解typedef struct{  uint32_t DMA_Channel;            &#x2F;&#x2F; 通道选择  uint32_t DMA_PeripheralBaseAddr; &#x2F;&#x2F; 外设基地址  uint32_t DMA_Memory0BaseAddr;     &#x2F;&#x2F; 存储">
+<meta property="og:type" content="article">
+<meta property="og:title" content="配置DMA由M-M和M-P的代码总结">
+<meta property="og:url" content="http://example.com/2026/08/03/%E9%85%8D%E7%BD%AEDMA%E7%94%B1M-M%E5%92%8CM-P%E7%9A%84%E4%BB%A3%E7%A0%81%E6%80%BB%E7%BB%93/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="一、DMA_InitTypeDef 初始化结构体逐成员详解typedef struct{  uint32_t DMA_Channel;            &#x2F;&#x2F; 通道选择  uint32_t DMA_PeripheralBaseAddr; &#x2F;&#x2F; 外设基地址  uint32_t DMA_Memory0BaseAddr;     &#x2F;&#x2F; 存储">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2026-08-03T09:17:04.000Z">
+<meta property="article:modified_time" content="2026-08-03T09:23:44.119Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="DMA">
+<meta property="article:tag" content="F407">
+<meta property="article:tag" content="M-M">
+<meta property="article:tag" content="M-P">
+<meta property="article:tag" content="STM32">
+<meta property="article:tag" content="直接存储器访问">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/favicon.png">
+  
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css">
+
+<meta name="generator" content="Hexo 8.1.2"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Hexo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS Feed"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="Search"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://example.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-配置DMA由M-M和M-P的代码总结" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2026/08/03/%E9%85%8D%E7%BD%AEDMA%E7%94%B1M-M%E5%92%8CM-P%E7%9A%84%E4%BB%A3%E7%A0%81%E6%80%BB%E7%BB%93/" class="article-date">
+  <time class="dt-published" datetime="2026-08-03T09:17:04.000Z" itemprop="datePublished">2026-08-03</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>►<a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E8%AF%BE%E7%A8%8B%E6%80%BB%E7%BB%93/">课程总结</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      配置DMA由M-M和M-P的代码总结
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>一、DMA_InitTypeDef 初始化结构体逐成员详解<br>typedef struct<br>{<br>  uint32_t DMA_Channel;            &#x2F;&#x2F; 通道选择<br>  uint32_t DMA_PeripheralBaseAddr; &#x2F;&#x2F; 外设基地址<br>  uint32_t DMA_Memory0BaseAddr;     &#x2F;&#x2F; 存储器0基地址<br>  uint32_t DMA_DIR;                &#x2F;&#x2F; 传输方向<br>  uint32_t DMA_BufferSize;         &#x2F;&#x2F; 一次传输数据个数<br>  uint32_t DMA_PeripheralInc;      &#x2F;&#x2F; 外设地址自增使能<br>  uint32_t DMA_MemoryInc;          &#x2F;&#x2F; 存储器地址自增使能<br>  uint32_t DMA_PeripheralDataSize; &#x2F;&#x2F; 外设数据位宽<br>  uint32_t DMA_MemoryDataSize;     &#x2F;&#x2F; 存储器数据位宽<br>  uint32_t DMA_Mode;               &#x2F;&#x2F; 模式：普通模式 &#x2F; 循环模式<br>  uint32_t DMA_Priority;           &#x2F;&#x2F; 数据流软件优先级<br>  uint32_t DMA_FIFOMode;           &#x2F;&#x2F; FIFO模式使能 &#x2F; 直接模式<br>  uint32_t DMA_FIFOThreshold;      &#x2F;&#x2F; FIFO触发阈值<br>  uint32_t DMA_MemoryBurst;        &#x2F;&#x2F; 存储器突发传输<br>  uint32_t DMA_PeripheralBurst;     &#x2F;&#x2F; 外设突发传输<br>}DMA_InitTypeDef;<br>逐个成员讲解</p>
+<ol>
+<li>DMA_Channel<br>选择该Stream对应的外设通道，用来映射硬件外设请求（USART&#x2F;ADC&#x2F;SPI等）。<br>重点：M2M（存储器到存储器）传输，没有外设硬件请求，此参数无效，可任意填写。</li>
+<li>DMA_PeripheralBaseAddr<br>外设一侧起始地址<br>• M2P：外设寄存器地址（例如 &amp;USART1-&gt;DR）<br>• M2M：把源地址填入此成员</li>
+<li>DMA_Memory0BaseAddr<br>存储器起始地址<br>• M2P：内存缓冲区首地址<br>• M2M：目标内存地址</li>
+<li>DMA_DIR 传输方向（三大模式）<br>• DMA_DIR_PeripheralToMemory：外设 → 存储器（P2M，ADC采集常用）<br>• DMA_DIR_MemoryToPeripheral：存储器 → 外设（M2P，串口DMA发送）<br>• DMA_DIR_MemoryToMemory：存储器 → 存储器（M2M，FLASH→SRAM，F4仅DMA2支持）</li>
+<li>DMA_BufferSize<br>本次DMA需要搬运多少个数据单元，最大65535，每启动一次传输，CNDTR寄存器装载这个数值</li>
+<li>DMA_PeripheralInc 外设地址自增<br>• DMA_PeripheralInc_Enable：每传输一个数据，外设地址自动+位宽<br>• DMA_PeripheralInc_Disable：地址固定（串口DR寄存器必须关闭自增！）</li>
+<li>DMA_MemoryInc 存储器地址自增<br>缓冲区数组必须开启自增；如果只读写单个变量，可以关闭</li>
+<li>DMA_PeripheralDataSize &#x2F; DMA_MemoryDataSize<br>可选：DMA_PeripheralDataSize_Byte(8bit) &#x2F; HalfWord(16bit) &#x2F; Word(32bit)<br>两边位宽可以不一致，DMA硬件自动完成位宽转换</li>
+<li>DMA_Mode 工作模式<br>• DMA_Mode_Normal普通模式：传输完成一次后，DMA停止，需要软件重新使能才能再次传输<br>• DMA_Mode_Circular循环模式：传输完成后自动重装长度，持续循环传输（音频、持续采样场景）<br>限制：M2M模式不支持循环模式！</li>
+<li>DMA_Priority<br>数据流优先级：高&#x2F;中&#x2F;低&#x2F;极低；多条Stream同时传输时，仲裁器以此作为调度依据</li>
+<li>DMA_FIFOMode FIFO模式<br>• DMA_FIFOMode_Enable：开启4级FIFO缓冲<br>• DMA_FIFOMode_Disable：直接模式，收到数据立刻搬运<br>硬性规则：M2M传输强制只能使用直接模式，必须关闭FIFO！</li>
+<li>DMA_FIFOThreshold<br>FIFO缓存积累到多少数据后开始批量传输，仅开启FIFO时生效</li>
+<li>DMA_MemoryBurst &#x2F; DMA_PeripheralBurst 突发传输<br>批量总线突发访问，初学实验一般配置 DMA_MemoryBurst_Single（单次传输），不用开启突发</li>
+</ol>
+<p>二、两种传输模式：M to M 和 M to P 完整讲解<br>1、 M to M 【存储器到存储器】 FLASH → SRAM<br>含义<br>源地址、目标地址都属于芯片内存区域（FLASH、SRAM），不需要外部外设触发请求，软件直接启动DMA搬运<br>典型用途：批量拷贝常量、大数组；<br>硬件限制：STM32F4只有DMA2控制器支持M2M，DMA1不支持！<br>M-M 五步编程要点</p>
+<ol>
+<li>定义两块存储区域<br>• FLASH端：const uint8_t src_buf[] &#x3D; {xxx};<br>const修饰，编译器自动把数组存放于FLASH。<br>• SRAM端：uint8_t dst_buf[sizeof(src_buf)];<br>运行时存放拷贝结果。</li>
+<li>选定DMA资源<br>必须选用DMA2，任选一条Stream；定义宏方便后期修改控制器、流编号</li>
+<li>配置DMA_InitTypeDef结构体（重点差异）<br>• DMA_DIR &#x3D; DMA_DIR_MemoryToMemory<br>• FIFO必须关闭（直接模式）<br>• 不支持循环模式<br>• 外设地址填写源FLASH地址，内存地址填写目标SRAM地址<br>• 外设地址自增、内存地址自增同时开启</li>
+<li>编写数据比较函数<br>DMA传输完成后，对比src_buf与dst_buf内容，判断拷贝是否成功</li>
+<li>main函数逻辑<br>开启DMA数据流 → 等待传输完成标志TCIF → 关闭DMA → 调用比较函数验证结果<br>通俗原理<br>CPU触发启动DMA，之后无需干预；DMA直接通过AHB总线，把FLASH的数据一块块搬运到SRAM</li>
+</ol>
+<p>2、M to P 【存储器到外设】 SRAM → 串口<br>含义<br>内存SRAM缓冲区的数据，由外设硬件请求触发DMA自动搬运到外设寄存器<br>课件实验：SRAM数组 → USART1数据寄存器DR，串口向外发送；同时主循环控制LED闪烁<br>实验目的直观证明：DMA搬运数据期间，CPU可以同时执行别的任务（点灯），不被占用！<br>M-P 三步编程要点</p>
+<ol>
+<li>初始化串口外设<br>移植成熟的USART初始化代码；删除串口中断相关代码<br>DMA模式依靠硬件发送请求，不需要接收&#x2F;发送中断</li>
+<li>配置DMA_InitTypeDef结构体（重点差异）<br>• DMA_DIR &#x3D; DMA_DIR_MemoryToPeripheral<br>• 外设地址：&amp;USART1-&gt;DR（串口数据寄存器）<br>• 外设地址自增：关闭！DR寄存器地址固定不变<br>• 存储器地址自增：开启（数组依次取出数据）<br>• 根据需求选择普通模式&#x2F;循环模式；支持开启FIFO</li>
+<li>main函数逻辑<br>准备待发送数组 → 初始化DMA、串口 → 使能DMA数据流 → 使能串口DMA发送请求<br>主循环持续翻转LED，观察：串口不断打印数据，LED同时持续闪烁<br>核心现象解读<br>如果不使用DMA：CPU需要循环调用发送函数，等待每一字节发送完成，CPU被死死占用，很难同时稳定点灯<br>使用DMA：硬件自动搬运字节，CPU解放出来独立运行点灯逻辑</li>
+</ol>
+<p>三、M-M 与 M-P 关键区别汇总<br>项目 M2M(存储器到存储器) M2P(存储器到外设)<br>触发方式 软件主动启动DMA 外设硬件请求触发（TXE标志）<br>可用控制器 仅DMA2 DMA1、DMA2都支持<br>FIFO 强制关闭，直接模式 可选开启FIFO<br>循环模式 不支持 支持<br>典型应用 内存大批量数据拷贝 串口、SPI、DAC自动发送 </p>
+<p>四、初学高频易错</p>
+<ol>
+<li>M-M不能用DMA1，会导致一直传输失败；</li>
+<li>M-M不能开循环模式、不能开FIFO；</li>
+<li>M-P串口DMA发送，外设地址自增必须关闭；</li>
+<li>不要混淆：通道只是外设映射，Stream流才是独立传输单元；</li>
+<li>DMA启动之后，CPU只是“发起命令”，搬运全程硬件自主执行</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2026/08/03/%E9%85%8D%E7%BD%AEDMA%E7%94%B1M-M%E5%92%8CM-P%E7%9A%84%E4%BB%A3%E7%A0%81%E6%80%BB%E7%BB%93/" data-id="cuidLyZO6DZh9-5t3ZL7CBCfB" data-title="配置DMA由M-M和M-P的代码总结" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/DMA/" rel="tag">DMA</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/M-M/" rel="tag">M-M</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/M-P/" rel="tag">M-P</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E7%9B%B4%E6%8E%A5%E5%AD%98%E5%82%A8%E5%99%A8%E8%AE%BF%E9%97%AE/" rel="tag">直接存储器访问</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2026/08/03/DMA%E7%9F%A5%E8%AF%86%E6%80%BB%E7%BB%93/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">DMA知识总结</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Categories</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%BB%8B%E7%BB%8D/">介绍</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E5%AE%9E%E6%93%8D%E6%80%BB%E7%BB%93/">实操总结</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E8%AF%BE%E7%A8%8B%E6%80%BB%E7%BB%93/">课程总结</a></li></ul></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0/">编程学习</a><ul class="category-list-child"><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%BC%96%E7%A8%8B%E5%AD%A6%E4%B9%A0/C%E8%AF%AD%E8%A8%80%E5%9F%BA%E7%A1%80/">C语言基础</a></li></ul></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/DMA/" rel="tag">DMA</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/EXTI/" rel="tag">EXTI</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HSE/" rel="tag">HSE</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HSI/" rel="tag">HSI</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/M-M/" rel="tag">M-M</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/M-P/" rel="tag">M-P</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MCO/" rel="tag">MCO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/NVIC/" rel="tag">NVIC</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RCC/" rel="tag">RCC</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/USART/" rel="tag">USART</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/scanf/" rel="tag">scanf</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/systick/" rel="tag">systick</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/typedef/" rel="tag">typedef</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%B2%E5%8F%A3/" rel="tag">串口</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%B2%E5%8F%A3%E4%B8%AD%E6%96%AD/" rel="tag">串口中断</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">位运算与位运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%86%85%E6%A0%B8%E5%AE%9A%E6%97%B6%E5%99%A8/" rel="tag">内核定时器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" rel="tag">原码·反码·补码</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">复合赋值运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD/" rel="tag">外部中断</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" rel="tag">寄存器编程</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/" rel="tag">嵌入式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">嵌入式寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" rel="tag">按键输入</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%97%B6%E9%92%9F/" rel="tag">时钟</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%A1%86%E5%9B%BE%E5%88%86%E6%9E%90/" rel="tag">框图分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%AF%AB%E7%A7%92%E5%BB%B6%E6%97%B6/" rel="tag">毫秒延时</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%9B%B4%E6%8E%A5%E5%AD%98%E5%82%A8%E5%99%A8%E8%AE%BF%E9%97%AE/" rel="tag">直接存储器访问</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" rel="tag">结构体</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" rel="tag">编程入门</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" rel="tag">编程笔记</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE/" rel="tag">通信协议</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/C%E8%AF%AD%E8%A8%80/" style="font-size: 16.67px;">C语言</a> <a href="/tags/DMA/" style="font-size: 11.67px;">DMA</a> <a href="/tags/EXTI/" style="font-size: 11.67px;">EXTI</a> <a href="/tags/F407/" style="font-size: 18.33px;">F407</a> <a href="/tags/GPIO/" style="font-size: 15px;">GPIO</a> <a href="/tags/HSE/" style="font-size: 10px;">HSE</a> <a href="/tags/HSI/" style="font-size: 10px;">HSI</a> <a href="/tags/M-M/" style="font-size: 10px;">M-M</a> <a href="/tags/M-P/" style="font-size: 10px;">M-P</a> <a href="/tags/MCO/" style="font-size: 11.67px;">MCO</a> <a href="/tags/NVIC/" style="font-size: 11.67px;">NVIC</a> <a href="/tags/RCC/" style="font-size: 11.67px;">RCC</a> <a href="/tags/STM32/" style="font-size: 20px;">STM32</a> <a href="/tags/USART/" style="font-size: 13.33px;">USART</a> <a href="/tags/scanf/" style="font-size: 10px;">scanf</a> <a href="/tags/systick/" style="font-size: 10px;">systick</a> <a href="/tags/typedef/" style="font-size: 10px;">typedef</a> <a href="/tags/%E4%B8%B2%E5%8F%A3/" style="font-size: 13.33px;">串口</a> <a href="/tags/%E4%B8%B2%E5%8F%A3%E4%B8%AD%E6%96%AD/" style="font-size: 10px;">串口中断</a> <a href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">位运算与位运算符</a> <a href="/tags/%E5%86%85%E6%A0%B8%E5%AE%9A%E6%97%B6%E5%99%A8/" style="font-size: 10px;">内核定时器</a> <a href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" style="font-size: 10px;">原码·反码·补码</a> <a href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">复合赋值运算符</a> <a href="/tags/%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD/" style="font-size: 10px;">外部中断</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 13.33px;">寄存器</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" style="font-size: 10px;">寄存器编程</a> <a href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/" style="font-size: 11.67px;">嵌入式</a> <a href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 10px;">嵌入式寄存器</a> <a href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" style="font-size: 15px;">库函数</a> <a href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" style="font-size: 10px;">按键输入</a> <a href="/tags/%E6%97%B6%E9%92%9F/" style="font-size: 11.67px;">时钟</a> <a href="/tags/%E6%A1%86%E5%9B%BE%E5%88%86%E6%9E%90/" style="font-size: 10px;">框图分析</a> <a href="/tags/%E6%AF%AB%E7%A7%92%E5%BB%B6%E6%97%B6/" style="font-size: 10px;">毫秒延时</a> <a href="/tags/%E7%9B%B4%E6%8E%A5%E5%AD%98%E5%82%A8%E5%99%A8%E8%AE%BF%E9%97%AE/" style="font-size: 11.67px;">直接存储器访问</a> <a href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" style="font-size: 10px;">结构体</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" style="font-size: 11.67px;">编程入门</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" style="font-size: 11.67px;">编程笔记</a> <a href="/tags/%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE/" style="font-size: 11.67px;">通信协议</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2026/08/">August 2026</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2026/07/">July 2026</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2026/08/03/%E9%85%8D%E7%BD%AEDMA%E7%94%B1M-M%E5%92%8CM-P%E7%9A%84%E4%BB%A3%E7%A0%81%E6%80%BB%E7%BB%93/">配置DMA由M-M和M-P的代码总结</a>
+          </li>
+        
+          <li>
+            <a href="/2026/08/03/DMA%E7%9F%A5%E8%AF%86%E6%80%BB%E7%BB%93/">DMA知识总结</a>
+          </li>
+        
+          <li>
+            <a href="/2026/08/02/USART%E4%B8%B2%E5%8F%A3%E5%AE%9E%E9%AA%8C%E6%80%BB%E7%BB%93/">USART串口实验总结</a>
+          </li>
+        
+          <li>
+            <a href="/2026/08/01/USART%E4%B8%B2%E5%8F%A3%E5%8A%9F%E8%83%BD%E6%A1%86%E5%9B%BE%E6%80%BB%E7%BB%93/">USART串口功能框图总结</a>
+          </li>
+        
+          <li>
+            <a href="/2026/08/01/USART%E4%B8%B2%E5%8F%A3%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE%E7%AE%80%E4%BB%8B%E6%80%BB%E7%BB%93/">USART串口通信协议简介总结</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2026 John Doe<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>

@@ -71,6 +71,185 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-配置DMA由M-M和M-P的代码总结" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2026/08/03/%E9%85%8D%E7%BD%AEDMA%E7%94%B1M-M%E5%92%8CM-P%E7%9A%84%E4%BB%A3%E7%A0%81%E6%80%BB%E7%BB%93/" class="article-date">
+  <time class="dt-published" datetime="2026-08-03T09:17:04.000Z" itemprop="datePublished">2026-08-03</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>►<a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E8%AF%BE%E7%A8%8B%E6%80%BB%E7%BB%93/">课程总结</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2026/08/03/%E9%85%8D%E7%BD%AEDMA%E7%94%B1M-M%E5%92%8CM-P%E7%9A%84%E4%BB%A3%E7%A0%81%E6%80%BB%E7%BB%93/">配置DMA由M-M和M-P的代码总结</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>一、DMA_InitTypeDef 初始化结构体逐成员详解<br>typedef struct<br>{<br>  uint32_t DMA_Channel;            &#x2F;&#x2F; 通道选择<br>  uint32_t DMA_PeripheralBaseAddr; &#x2F;&#x2F; 外设基地址<br>  uint32_t DMA_Memory0BaseAddr;     &#x2F;&#x2F; 存储器0基地址<br>  uint32_t DMA_DIR;                &#x2F;&#x2F; 传输方向<br>  uint32_t DMA_BufferSize;         &#x2F;&#x2F; 一次传输数据个数<br>  uint32_t DMA_PeripheralInc;      &#x2F;&#x2F; 外设地址自增使能<br>  uint32_t DMA_MemoryInc;          &#x2F;&#x2F; 存储器地址自增使能<br>  uint32_t DMA_PeripheralDataSize; &#x2F;&#x2F; 外设数据位宽<br>  uint32_t DMA_MemoryDataSize;     &#x2F;&#x2F; 存储器数据位宽<br>  uint32_t DMA_Mode;               &#x2F;&#x2F; 模式：普通模式 &#x2F; 循环模式<br>  uint32_t DMA_Priority;           &#x2F;&#x2F; 数据流软件优先级<br>  uint32_t DMA_FIFOMode;           &#x2F;&#x2F; FIFO模式使能 &#x2F; 直接模式<br>  uint32_t DMA_FIFOThreshold;      &#x2F;&#x2F; FIFO触发阈值<br>  uint32_t DMA_MemoryBurst;        &#x2F;&#x2F; 存储器突发传输<br>  uint32_t DMA_PeripheralBurst;     &#x2F;&#x2F; 外设突发传输<br>}DMA_InitTypeDef;<br>逐个成员讲解</p>
+<ol>
+<li>DMA_Channel<br>选择该Stream对应的外设通道，用来映射硬件外设请求（USART&#x2F;ADC&#x2F;SPI等）。<br>重点：M2M（存储器到存储器）传输，没有外设硬件请求，此参数无效，可任意填写。</li>
+<li>DMA_PeripheralBaseAddr<br>外设一侧起始地址<br>• M2P：外设寄存器地址（例如 &amp;USART1-&gt;DR）<br>• M2M：把源地址填入此成员</li>
+<li>DMA_Memory0BaseAddr<br>存储器起始地址<br>• M2P：内存缓冲区首地址<br>• M2M：目标内存地址</li>
+<li>DMA_DIR 传输方向（三大模式）<br>• DMA_DIR_PeripheralToMemory：外设 → 存储器（P2M，ADC采集常用）<br>• DMA_DIR_MemoryToPeripheral：存储器 → 外设（M2P，串口DMA发送）<br>• DMA_DIR_MemoryToMemory：存储器 → 存储器（M2M，FLASH→SRAM，F4仅DMA2支持）</li>
+<li>DMA_BufferSize<br>本次DMA需要搬运多少个数据单元，最大65535，每启动一次传输，CNDTR寄存器装载这个数值</li>
+<li>DMA_PeripheralInc 外设地址自增<br>• DMA_PeripheralInc_Enable：每传输一个数据，外设地址自动+位宽<br>• DMA_PeripheralInc_Disable：地址固定（串口DR寄存器必须关闭自增！）</li>
+<li>DMA_MemoryInc 存储器地址自增<br>缓冲区数组必须开启自增；如果只读写单个变量，可以关闭</li>
+<li>DMA_PeripheralDataSize &#x2F; DMA_MemoryDataSize<br>可选：DMA_PeripheralDataSize_Byte(8bit) &#x2F; HalfWord(16bit) &#x2F; Word(32bit)<br>两边位宽可以不一致，DMA硬件自动完成位宽转换</li>
+<li>DMA_Mode 工作模式<br>• DMA_Mode_Normal普通模式：传输完成一次后，DMA停止，需要软件重新使能才能再次传输<br>• DMA_Mode_Circular循环模式：传输完成后自动重装长度，持续循环传输（音频、持续采样场景）<br>限制：M2M模式不支持循环模式！</li>
+<li>DMA_Priority<br>数据流优先级：高&#x2F;中&#x2F;低&#x2F;极低；多条Stream同时传输时，仲裁器以此作为调度依据</li>
+<li>DMA_FIFOMode FIFO模式<br>• DMA_FIFOMode_Enable：开启4级FIFO缓冲<br>• DMA_FIFOMode_Disable：直接模式，收到数据立刻搬运<br>硬性规则：M2M传输强制只能使用直接模式，必须关闭FIFO！</li>
+<li>DMA_FIFOThreshold<br>FIFO缓存积累到多少数据后开始批量传输，仅开启FIFO时生效</li>
+<li>DMA_MemoryBurst &#x2F; DMA_PeripheralBurst 突发传输<br>批量总线突发访问，初学实验一般配置 DMA_MemoryBurst_Single（单次传输），不用开启突发</li>
+</ol>
+<p>二、两种传输模式：M to M 和 M to P 完整讲解<br>1、 M to M 【存储器到存储器】 FLASH → SRAM<br>含义<br>源地址、目标地址都属于芯片内存区域（FLASH、SRAM），不需要外部外设触发请求，软件直接启动DMA搬运<br>典型用途：批量拷贝常量、大数组；<br>硬件限制：STM32F4只有DMA2控制器支持M2M，DMA1不支持！<br>M-M 五步编程要点</p>
+<ol>
+<li>定义两块存储区域<br>• FLASH端：const uint8_t src_buf[] &#x3D; {xxx};<br>const修饰，编译器自动把数组存放于FLASH。<br>• SRAM端：uint8_t dst_buf[sizeof(src_buf)];<br>运行时存放拷贝结果。</li>
+<li>选定DMA资源<br>必须选用DMA2，任选一条Stream；定义宏方便后期修改控制器、流编号</li>
+<li>配置DMA_InitTypeDef结构体（重点差异）<br>• DMA_DIR &#x3D; DMA_DIR_MemoryToMemory<br>• FIFO必须关闭（直接模式）<br>• 不支持循环模式<br>• 外设地址填写源FLASH地址，内存地址填写目标SRAM地址<br>• 外设地址自增、内存地址自增同时开启</li>
+<li>编写数据比较函数<br>DMA传输完成后，对比src_buf与dst_buf内容，判断拷贝是否成功</li>
+<li>main函数逻辑<br>开启DMA数据流 → 等待传输完成标志TCIF → 关闭DMA → 调用比较函数验证结果<br>通俗原理<br>CPU触发启动DMA，之后无需干预；DMA直接通过AHB总线，把FLASH的数据一块块搬运到SRAM</li>
+</ol>
+<p>2、M to P 【存储器到外设】 SRAM → 串口<br>含义<br>内存SRAM缓冲区的数据，由外设硬件请求触发DMA自动搬运到外设寄存器<br>课件实验：SRAM数组 → USART1数据寄存器DR，串口向外发送；同时主循环控制LED闪烁<br>实验目的直观证明：DMA搬运数据期间，CPU可以同时执行别的任务（点灯），不被占用！<br>M-P 三步编程要点</p>
+<ol>
+<li>初始化串口外设<br>移植成熟的USART初始化代码；删除串口中断相关代码<br>DMA模式依靠硬件发送请求，不需要接收&#x2F;发送中断</li>
+<li>配置DMA_InitTypeDef结构体（重点差异）<br>• DMA_DIR &#x3D; DMA_DIR_MemoryToPeripheral<br>• 外设地址：&amp;USART1-&gt;DR（串口数据寄存器）<br>• 外设地址自增：关闭！DR寄存器地址固定不变<br>• 存储器地址自增：开启（数组依次取出数据）<br>• 根据需求选择普通模式&#x2F;循环模式；支持开启FIFO</li>
+<li>main函数逻辑<br>准备待发送数组 → 初始化DMA、串口 → 使能DMA数据流 → 使能串口DMA发送请求<br>主循环持续翻转LED，观察：串口不断打印数据，LED同时持续闪烁<br>核心现象解读<br>如果不使用DMA：CPU需要循环调用发送函数，等待每一字节发送完成，CPU被死死占用，很难同时稳定点灯<br>使用DMA：硬件自动搬运字节，CPU解放出来独立运行点灯逻辑</li>
+</ol>
+<p>三、M-M 与 M-P 关键区别汇总<br>项目 M2M(存储器到存储器) M2P(存储器到外设)<br>触发方式 软件主动启动DMA 外设硬件请求触发（TXE标志）<br>可用控制器 仅DMA2 DMA1、DMA2都支持<br>FIFO 强制关闭，直接模式 可选开启FIFO<br>循环模式 不支持 支持<br>典型应用 内存大批量数据拷贝 串口、SPI、DAC自动发送 </p>
+<p>四、初学高频易错</p>
+<ol>
+<li>M-M不能用DMA1，会导致一直传输失败；</li>
+<li>M-M不能开循环模式、不能开FIFO；</li>
+<li>M-P串口DMA发送，外设地址自增必须关闭；</li>
+<li>不要混淆：通道只是外设映射，Stream流才是独立传输单元；</li>
+<li>DMA启动之后，CPU只是“发起命令”，搬运全程硬件自主执行</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2026/08/03/%E9%85%8D%E7%BD%AEDMA%E7%94%B1M-M%E5%92%8CM-P%E7%9A%84%E4%BB%A3%E7%A0%81%E6%80%BB%E7%BB%93/" data-id="cuidLyZO6DZh9-5t3ZL7CBCfB" data-title="配置DMA由M-M和M-P的代码总结" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/DMA/" rel="tag">DMA</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/M-M/" rel="tag">M-M</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/M-P/" rel="tag">M-P</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E7%9B%B4%E6%8E%A5%E5%AD%98%E5%82%A8%E5%99%A8%E8%AE%BF%E9%97%AE/" rel="tag">直接存储器访问</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="post-DMA知识总结" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2026/08/03/DMA%E7%9F%A5%E8%AF%86%E6%80%BB%E7%BB%93/" class="article-date">
+  <time class="dt-published" datetime="2026-08-03T09:07:47.000Z" itemprop="datePublished">2026-08-03</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>►<a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E8%AF%BE%E7%A8%8B%E6%80%BB%E7%BB%93/">课程总结</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2026/08/03/DMA%E7%9F%A5%E8%AF%86%E6%80%BB%E7%BB%93/">DMA知识总结</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p> DMA简介<br>DMA全称：Direct Memory Access 直接存储器访问<br>核心意义：数据搬运全程不需要CPU参与，硬件自主完成数据传输，解放CPU内核去执行其他任务</p>
+<p>一、通道 + 流（Stream + Channel）<br>名词区分<br>Stream（流）：DMA最小独立传输单元；DMA1、DMA2控制器各自拥有 Stream0 ~ Stream7 共8条流<br>Channel（通道）：属于流内部的外设路由选择。每一条流拥有8个通道选项，用来绑定不同外设的DMA请求信号<br>完整工作原理<br>STM32片内外设（USART、ADC、SPI、TIM）在需要DMA搬运数据时，会输出DMA请求信号REQ</p>
+<ol>
+<li>我们代码配置：选择某一条Stream，并且配置该Stream的通道，把外设请求路由接入这条流；</li>
+<li>同一时刻，一条Stream只能选择一个通道，只能服务一个外设</li>
+<li>多个外设想要同时DMA传输，必须分配到不同的Stream<br>通俗类比<br>流 &#x3D; 8条独立高速公路；通道 &#x3D; 高速路的出入口，不同出入口连接不同外设（串口、ADC等）<br>通道只是‘信号路由开关’，不具备独立传输能力；真正负责传输的硬件实体是「流」</li>
+</ol>
+<p>二、仲裁器 Arbiter<br>工作原理<br>当多条Stream同时产生DMA传输请求，多条数据流想要抢占内部总线资源，此时仲裁器负责调度次序，防止总线冲突<br>仲裁优先级判定顺序：</p>
+<ol>
+<li>软件配置优先级（4档：高 &gt; 中 &gt; 低 &gt; 极低）；</li>
+<li>如果软件优先级相同，Stream编号越小优先级越高（Stream0 &gt; Stream1 &gt; … &gt; Stream7）。<br>工作流程：<br>多个Stream把请求送入仲裁器 → 仲裁器对比优先级 → 允许优先级最高的流占用内部总线访问FIFO；<br>当前流传输一小段结束后，再切换下一个等待的流。<br>类比：高速路口交警，多条车道同时想要通行，交警按照优先级放行。</li>
+</ol>
+<p>三、FIFO 先进先出缓冲区（First In First Out）<br>F4每条Stream内置 4级深度FIFO，可开启&#x2F;关闭（关闭即直接模式）<br>工作原理<br>核心解决【外设速度】和【存储器访问速度不匹配】的矛盾。<br>场景举例：串口慢速逐字节收到数据，内存适合批量读写。</p>
+<ol>
+<li>开启FIFO模式<br>外设逐字节数据先存入FIFO缓存，积累到设定阈值之后，一次性批量搬运到内存；减少频繁总线请求，提升传输效率。支持数据打包、数据位宽转换</li>
+<li>关闭FIFO（直接模式）<br>不缓存，外设收到1个字节立刻发起一次内存搬运。适合少量实时数据传输，不支持打包<br>限制：内存到内存（Memory-to-Memory）传输强制只能使用直接模式，无法开启FIFO</li>
+</ol>
+<p>四、存储器接口 Memory Port<br>工作原理<br>物理上连接DMA内部总线与系统AHB总线，负责访问芯片存储区域：SRAM、Flash<br>DMA传输两种流向：</p>
+<ol>
+<li>存储器 → 外设：内存的数据，经过存储器接口送入DMA，最终发往串口&#x2F;SPI等外设；</li>
+<li>外设 → 存储器：外设采集的数据，经过DMA，通过存储器接口写入SRAM缓冲区<br>所有读写内存的脉冲、地址信号、数据信号都由这个接口产生，全程无需CPU控制</li>
+</ol>
+<p>五、外设接口 Peripheral Port<br>工作原理<br>作为DMA和各个片内外设（USART、ADC、TIM、SPI）之间的数据桥梁。</p>
+<ol>
+<li>外设产生数据后，把数据送到外设接口；</li>
+<li>或者DMA把数据通过外设接口推送给外设进行发送；</li>
+<li>外设发出的DMA硬件请求信号，也通过这条线路送到前面的「流、通道」模块<br>区分：外设接口只管和片上外设通信；存储器接口只管和内存通信。</li>
+</ol>
+<p>六 、编程接口（AHB从设备接口）<br>工作原理<br>DMA控制器在系统里被当做一个AHB从设备<br>CPU（内核）通过这条AHB接口，读写DMA全部寄存器：</p>
+<ul>
+<li>CCR：通道配置寄存器</li>
+<li>CNDTR：剩余数据数量寄存器</li>
+<li>CPAR：外设地址寄存器</li>
+<li>CMAR：存储器地址寄存器<br>我们在Keil编写代码调用 <code>DMA_Init()</code> 函数，本质就是CPU通过这个接口，向DMA硬件写入配置参数，设置传输方向、数据宽度、地址、传输长度<br>DMA配置完成后，CPU就可以退出，不再参与后续数据搬运。</li>
+</ul>
+<hr>
+<h1 id="完整数据流串联演示（ADC采集，DMA搬运数据到内存）"><a href="#完整数据流串联演示（ADC采集，DMA搬运数据到内存）" class="headerlink" title="完整数据流串联演示（ADC采集，DMA搬运数据到内存）"></a>完整数据流串联演示（ADC采集，DMA搬运数据到内存）</h1><ol>
+<li>ADC完成一次采样，发出DMA请求信号；</li>
+<li>请求信号根据通道配置，路由到指定Stream；</li>
+<li>如果多个Stream同时请求，仲裁器根据优先级调度；</li>
+<li>ADC采样数据通过【外设接口】送入DMA；</li>
+<li>数据存入FIFO缓冲；</li>
+<li>达到阈值后，通过【存储器接口】，自动把数据写入SRAM；</li>
+<li>整个搬运过程CPU不介入；CPU只需要后续去SRAM读取结果。</li>
+</ol>
+<h1 id="核心总结"><a href="#核心总结" class="headerlink" title="核心总结"></a>核心总结</h1><ol>
+<li>通道&#x3D;外设路由，流&#x3D;独立传输通道；</li>
+<li>仲裁器解决多流并发资源争抢；</li>
+<li>FIFO解决外设与内存速度不匹配，实现批量传输；</li>
+<li>外设接口 ↔ 片内外设；存储器接口 ↔ SRAM&#x2F;Flash；</li>
+<li>编程接口是CPU用来初始化、配置DMA寄存器的通道。<br>需要我继续补充：DMA三种传输方向、循环模式&#x2F;普通模式的原理，做成同系列笔记吗？</li>
+</ol>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2026/08/03/DMA%E7%9F%A5%E8%AF%86%E6%80%BB%E7%BB%93/" data-id="cuidBBPmdcN43G1KcHqTRXnp8" data-title="DMA知识总结" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/DMA/" rel="tag">DMA</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E7%9B%B4%E6%8E%A5%E5%AD%98%E5%82%A8%E5%99%A8%E8%AE%BF%E9%97%AE/" rel="tag">直接存储器访问</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
     <article id="post-USART串口实验总结" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
     <a href="/2026/08/02/USART%E4%B8%B2%E5%8F%A3%E5%AE%9E%E9%AA%8C%E6%80%BB%E7%BB%93/" class="article-date">
@@ -921,180 +1100,11 @@ NVIC_ISER0 |= (1 &lt;&lt; 6); // EXTI0中断对应第6位
 
 
   
-    <article id="post-RCC时钟树学习笔记" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
-  <div class="article-meta">
-    <a href="/2026/07/29/RCC%E6%97%B6%E9%92%9F%E6%A0%91%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" class="article-date">
-  <time class="dt-published" datetime="2026-07-29T07:37:40.000Z" itemprop="datePublished">2026-07-29</time>
-</a>
-    
-  <div class="article-category">
-    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>►<a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E8%AF%BE%E7%A8%8B%E6%80%BB%E7%BB%93/">课程总结</a>
-  </div>
-
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="p-name article-title" href="/2026/07/29/RCC%E6%97%B6%E9%92%9F%E6%A0%91%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">RCC时钟树学习笔记</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="e-content article-entry" itemprop="articleBody">
-      
-        <p>STM32F407 RCC+时钟树<br>一、基础概念</p>
-<ol>
-<li>RCC全称：复位和时钟控制器（Reset &amp; Clock Control）<br>作用：掌管芯片所有时钟开启、频率升降、总线分频、外设时钟开关，相当于整个单片机的总电源+调速开关；所有外设（GPIO、定时器、串口）必须开启时钟才能工作</li>
-<li>时钟树：时钟从源头出发，经过分频、倍频、逐级分流，流向CPU、各类总线、外设的完整流向结构图</li>
-</ol>
-<p>二、5个原始时钟源头（所有频率的根基）<br>高速时钟（给CPU、主系统用）</p>
-<ol>
-<li>HSI：内部高速RC时钟（16MHz）<br>上电默认时钟，芯片内部自带，不用外接晶振；缺点：精度差、温漂大<br>上电瞬间单片机先跑这个低速时钟，执行时钟初始化代码，切换到高精度HSE&#x2F;PLL</li>
-<li>HSE：外部高速晶振（标配8MHz）(范围4-26MHz)<br>开发板焊接外部石英晶振，精度极高、稳定；配置168MHz主频唯一首选源头<br>低速时钟（仅低功耗计时器件使用）</li>
-<li>LSE：外部32.768KHz晶振<br>专门给RTC实时时钟提供基准，断电靠纽扣电池走时间</li>
-<li>LSI：内部低速RC时钟（32KHz）<br>精度差，只给独立看门狗、待机唤醒使用</li>
-<li>双PLL锁相环（频率倍增核心模块）<br>• 主PLL（PLL）：你一直在配置的模块，把25MHz低频晶振拉升成168MHz高频系统时钟，同时分出48MHz固定时钟供给USB（必须严格48MHz才能识别U盘）<br>计算公式：SYSCLK &#x3D; (HSE ÷ M) × N ÷ P<br>经典参数：M&#x3D;25、N&#x3D;336、P&#x3D;2 → (8&#x2F;8)*336&#x2F;2 &#x3D; 168MHz；Q&#x3D;7专门算出48MHz给USB<br>• PLLI2S：音频专用锁相环，播放音乐用，日常点灯几乎用不到</li>
-</ol>
-<p>三、时钟主干完整流向<br>HSE(25MHz) → PLL分频倍频 → SYSCLK(168MHz系统总时钟) → 分成3路总线时钟</p>
-<ol>
-<li>SYSCLK：系统总时钟（最高168MHz）<br>整个芯片最高频率时钟，供给内核CPU、Flash存储器；可三选一来源：HSI &#x2F; HSE &#x2F; PLL输出（我们固定选PLL）</li>
-<li>三级总线分频（RCC-&gt;CFGR寄存器配置）<br>SYSCLK向下分频，分出3条马路，不同外设分配不同速度，兼顾性能+省电：</li>
-<li>HCLK（AHB总线时钟）<br>默认不分频：HCLK &#x3D; SYSCLK &#x3D; 168MHz<br>承载：CPU内核、DMA内存搬运、Flash、高速存储器、以太网等核心硬件，主干道全速跑</li>
-<li>PCLK2（APB2高速外设总线）<br>二分频：PCLK2 &#x3D; HCLK ÷ 2 &#x3D; 84MHz<br>承载：GPIO所有引脚、ADC、高级定时器、串口1等高速外设（LED引脚挂载在这里）<br>规则：APB2最大上限84MHz。</li>
-<li>PCLK1（APB1低速外设总线）<br>四分频：PCLK1 &#x3D; HCLK ÷ 4 &#x3D; 42MHz<br>承载：普通串口、I2C、基础定时器、看门狗等低速外设；上限最高42MHz。<br>补充规则：如果APB总线分频系数≥2，挂载上面的定时器时钟会自动翻倍，方便定时计算<br>四、外设时钟开关逻辑<br>每条总线下面挂载一堆外设，默认全部关闭时钟，必须通过RCC寄存器手动开启对应外设时钟，硬件才会通电工作：<br>例：开启GPIOA引脚时钟：RCC-&gt;AHB1ENR |&#x3D; RCC_AHB1ENR_GPIOAEN;<br>不开这句，LED引脚初始化完全无效，灯不会亮</li>
-</ol>
-<p>五、配套关键硬件设置（代码里的FLASH等待周期）<br>CPU高速读取Flash里的程序时，Flash硬件速度跟不上168MHz主频，需要设置等待周期（LATENCY）：<br>• 168MHz：必须配置5个等待周期<br>• 主频降低，等待周期同步减小，否则程序运行时序错乱、延时无变化</p>
-<p>六、上电完整启动流程（对应你的SetSysClock函数执行步骤）</p>
-<ol>
-<li>上电默认跑HSI内部16MHz低速时钟；</li>
-<li>开启外部HSE 25MHz晶振，等待晶振震荡稳定；</li>
-<li>配置PLL的M&#x2F;N&#x2F;P&#x2F;Q参数，算出168MHz主频+48MHz USB时钟；</li>
-<li>开启PLL，等待PLL倍频稳定就绪；</li>
-<li>设置Flash读写等待周期，适配当前主频；</li>
-<li>将系统时钟SYSCLK切换为PLL输出的168MHz；</li>
-<li>配置AHB、APB1、APB2总线分频比例；</li>
-<li>后续main函数里开启GPIO时钟、初始化引脚、点灯循环</li>
-</ol>
-<p>七、MCO是什么<br>MCO &#x3D; 单片机时钟输出引脚<br>芯片预留了专门引脚，可以把芯片内部看不见的各种时钟信号引到芯片外面</p>
-<p>八、输出监控系统时钟，拆开含义</p>
-<ol>
-<li>系统时钟（SYSCLK）：就是你用PLL配置的168MHz总主频，CPU运行的基准时钟，封在芯片内部，肉眼、万用表都测不到；</li>
-<li>输出：把SYSCLK信号接到MCO引脚上；</li>
-<li>监控：拿示波器接这个引脚，查看波形频率。</li>
-<li>作用（你现在最需要的）<br>一次次修改PLL的N数值、调整主频，心里没法确认：<br>单片机到底有没有真正跑到 168M &#x2F; 84M？<br>PLL有没有锁定成功？时钟配置写错有没有乱频？<br>开启MCO输出SYSCLK之后：<br>示波器测出多少赫兹，就代表当前单片机实际主频是多少，用来验证你的时钟代码是否正确</li>
-</ol>
-<p>九、F407实操细节</p>
-<ol>
-<li>选用 MCO2（PC9引脚），专门可以输出SYSCLK系统主时钟；</li>
-<li>注意限制：GPIO引脚最高承受100Mhz信号，168MHz超出上限，必须内部二分频输出；</li>
-<li>举例：<br>168MHz二分频输出 → 引脚测出来84MHz波形，就证明系统时钟确实是168MHz，配置无误</li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/29/RCC%E6%97%B6%E9%92%9F%E6%A0%91%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" data-id="cuid0hfcs7-An1puB7GRMFi8a" data-title="RCC时钟树学习笔记" class="article-share-link"><span class="fa fa-share">Share</span></a>
-      
-      
-      
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/MCO/" rel="tag">MCO</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/RCC/" rel="tag">RCC</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E6%97%B6%E9%92%9F/" rel="tag">时钟</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-
-  
-    <article id="post-STM32F407带位操作总结" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
-  <div class="article-meta">
-    <a href="/2026/07/24/STM32F407%E5%B8%A6%E4%BD%8D%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/" class="article-date">
-  <time class="dt-published" datetime="2026-07-24T09:15:28.000Z" itemprop="datePublished">2026-07-24</time>
-</a>
-    
-  <div class="article-category">
-    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>
-  </div>
-
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="p-name article-title" href="/2026/07/24/STM32F407%E5%B8%A6%E4%BD%8D%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/">STM32F407带位操作总结</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="e-content article-entry" itemprop="articleBody">
-      
-        <p>STM32 位带操作 小白通俗讲解笔记（可直接存入GitHub嵌入式分类）</p>
-<p>一、什么是位带？<br>单片机寄存器都是 32位 的，一个寄存器里面挤了32个引脚电平（每1位代表1个引脚：0低电平、1高电平）<br>正常写法想单独修改其中某1个引脚：<br>要先把整个寄存器数值读出来 → 掩码清零目标位 → 赋值1&#x2F;0 → 写回寄存器，代码繁琐</p>
-<p>位带（Bit-Band）就是ST给F1&#x2F;F4系列单片机设计的快捷机制：<br>把寄存器里每1个二进制位，单独映射成1个完整32位内存地址<br>直接给这个专属地址赋值 1 或 0，就能只修改单个引脚电平，不用复杂位运算</p>
-<p>举例子：<br>ODR输出寄存器第6位（PF6引脚），对应一个独立地址<br>PFout(6) &#x3D; 1; 直接拉高PF6<br>PFout(6) &#x3D; 0; 直接拉低PF6</p>
-<p>二、位带两大区域（STM32F4）<br>单片机内存划分两块支持位带的区域：</p>
-<ol>
-<li>外设位带区：片上所有GPIO、定时器等外设寄存器<br>我们点灯、操作引脚只用这一块</li>
-<li>SRAM位带区：内存变量<br>规则：<br>原始1bit（1个位） → 映射别名区占用 4字节（1个32位地址）<br>原始1个位带区地址 &#x3D; 别名区基础地址 + 偏移计算得来</li>
-</ol>
-<p>三、位带地址计算公式拆解（你代码里的宏逐句翻译）</p>
-<ol>
-<li>核心计算公式宏</li>
-</ol>
-<p>#define BITBAND(addr, bitnum) ((addr &amp; 0xF0000000)+0x02000000+((addr &amp; 0x000FFFFF)&lt;&lt;5)+(bitnum&lt;&lt;2))<br>代码解释：</p>
-<ol>
-<li>addr &amp; 0xF0000000：取出外设寄存器所在大区基地址（外设都是0x40000000开头）</li>
-<li>+0x02000000：跳到位带别名区起始地址</li>
-<li>(addr &amp; 0x000FFFFF)&lt;&lt;5：原始寄存器整体偏移换算别名区偏移，左移5 &#x3D; ×32</li>
-<li>bitnum&lt;&lt;2：指定要操作的第几位，左移2 &#x3D; ×4（1位占4字节空间）<br>最终算出：某寄存器第bitnum个位 对应的位带别名地址</li>
-<li>指针访问宏</li>
-</ol>
-<p>#define MEM(addr)  (*(volatile unsigned long *)(addr))<br>• volatile：强制每次都去硬件地址读取，不被编译器优化（单片机寄存器必备关键字）<br>• 把数字地址强制转为指针，解引用后可以直接赋值读写<br>3. 封装整合宏<br>#define BIT_ADDR(addr, bitnum)  MEM(BITBAND(addr, bitnum))<br>输入：寄存器原始地址 + 要操作的位序号<br>输出：可直接赋值的位带地址<br>4. 引脚快捷操作宏（以GPIOF为例）<br>#define GPIOF_ODR_ADDR    (GPIOF_BASE+0x14)  &#x2F;&#x2F;GPIOF输出寄存器地址<br>#define PFout(n)      BIT_ADDR(GPIOF_ODR_ADDR, n)<br>调用：<br>PFout(5)&#x3D;1; 拉高PF5引脚<br>PFout(5)&#x3D;0; 拉低PF5引脚</p>
-<p>四、传统写法 VS 位带写法对比<br>需求：把PF6引脚置低电平<br>老式寄存器写法<br>GPIOF_ODR &amp;&#x3D; ~(1&lt;&lt;6);<br>需要手动用按位取反、与运算，新手很容易写错位数<br>位带极简写法<br>PFout(6) &#x3D; 0;<br>数字对应引脚号，直观好记，几乎不会出错</p>
-<p>五、位带优缺点<br>优点</p>
-<ol>
-<li>代码极简，读写单个IO引脚超级方便</li>
-<li>可读性极高，新手友好</li>
-<li>底层硬件实现，执行效率很高<br>缺点</li>
-<li>仅STM32 F1、F4系列支持；H7、L4等新款芯片取消了位带功能，不能通用</li>
-<li>只能操作：GPIO输出寄存器ODR、输入寄存器IDR、内存变量；其他寄存器场景受限</li>
-</ol>
-<p>六、完整可编译整套位带代码（F407）<br>&#x2F;&#x2F;位带基础宏定义<br>#define BITBAND(addr, bitnum) ((addr &amp; 0xF0000000)+0x02000000+((addr &amp; 0x000FFFFF)&lt;&lt;5)+(bitnum&lt;&lt;2))<br>#define MEM(addr)              (*(volatile unsigned long *)(addr))<br>#define BIT_ADDR(addr, bitnum) MEM(BITBAND(addr, bitnum))</p>
-<p>&#x2F;&#x2F;GPIOF输出引脚位带操作<br>#define GPIOF_ODR_ADDR  (GPIOF_BASE + 0x14)<br>#define PFout(n)        BIT_ADDR(GPIOF_ODR_ADDR, n)</p>
-<p>&#x2F;&#x2F;GPIOB、GPIOA可以照抄拓展<br>#define GPIOA_ODR_ADDR  (GPIOA_BASE + 0x14)<br>#define PAout(n)        BIT_ADDR(GPIOA_ODR_ADDR, n)</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://example.com/2026/07/24/STM32F407%E5%B8%A6%E4%BD%8D%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/" data-id="cuid8xOVAVE_-Pifa5aQHCZdo" data-title="STM32F407带位操作总结" class="article-share-link"><span class="fa fa-share">Share</span></a>
-      
-      
-      
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" rel="tag">寄存器编程</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-
-  
 
 
   <nav id="page-nav">
     
-    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="extend next" rel="next" href="/page/2/">Next &raquo;</a>
+    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><a class="extend next" rel="next" href="/page/2/">Next &raquo;</a>
   </nav>
 
 </section>
@@ -1115,7 +1125,7 @@ NVIC_ISER0 |= (1 &lt;&lt; 6); // EXTI0中断对应第6位
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/EXTI/" rel="tag">EXTI</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HSE/" rel="tag">HSE</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HSI/" rel="tag">HSI</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MCO/" rel="tag">MCO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/NVIC/" rel="tag">NVIC</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RCC/" rel="tag">RCC</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/USART/" rel="tag">USART</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/scanf/" rel="tag">scanf</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/systick/" rel="tag">systick</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/typedef/" rel="tag">typedef</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%B2%E5%8F%A3/" rel="tag">串口</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%B2%E5%8F%A3%E4%B8%AD%E6%96%AD/" rel="tag">串口中断</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">位运算与位运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%86%85%E6%A0%B8%E5%AE%9A%E6%97%B6%E5%99%A8/" rel="tag">内核定时器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" rel="tag">原码·反码·补码</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">复合赋值运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD/" rel="tag">外部中断</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" rel="tag">寄存器编程</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/" rel="tag">嵌入式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">嵌入式寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" rel="tag">按键输入</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%97%B6%E9%92%9F/" rel="tag">时钟</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%A1%86%E5%9B%BE%E5%88%86%E6%9E%90/" rel="tag">框图分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%AF%AB%E7%A7%92%E5%BB%B6%E6%97%B6/" rel="tag">毫秒延时</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" rel="tag">结构体</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" rel="tag">编程入门</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" rel="tag">编程笔记</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE/" rel="tag">通信协议</a></li></ul>
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/C%E8%AF%AD%E8%A8%80/" rel="tag">C语言</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/DMA/" rel="tag">DMA</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/EXTI/" rel="tag">EXTI</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/GPIO/" rel="tag">GPIO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HSE/" rel="tag">HSE</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HSI/" rel="tag">HSI</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/M-M/" rel="tag">M-M</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/M-P/" rel="tag">M-P</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MCO/" rel="tag">MCO</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/NVIC/" rel="tag">NVIC</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/RCC/" rel="tag">RCC</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/USART/" rel="tag">USART</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/scanf/" rel="tag">scanf</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/systick/" rel="tag">systick</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/typedef/" rel="tag">typedef</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%B2%E5%8F%A3/" rel="tag">串口</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%B8%B2%E5%8F%A3%E4%B8%AD%E6%96%AD/" rel="tag">串口中断</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">位运算与位运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%86%85%E6%A0%B8%E5%AE%9A%E6%97%B6%E5%99%A8/" rel="tag">内核定时器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" rel="tag">原码·反码·补码</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" rel="tag">复合赋值运算符</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD/" rel="tag">外部中断</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" rel="tag">寄存器编程</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/" rel="tag">嵌入式</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AF%84%E5%AD%98%E5%99%A8/" rel="tag">嵌入式寄存器</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" rel="tag">库函数</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" rel="tag">按键输入</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%97%B6%E9%92%9F/" rel="tag">时钟</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%A1%86%E5%9B%BE%E5%88%86%E6%9E%90/" rel="tag">框图分析</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%AF%AB%E7%A7%92%E5%BB%B6%E6%97%B6/" rel="tag">毫秒延时</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%9B%B4%E6%8E%A5%E5%AD%98%E5%82%A8%E5%99%A8%E8%AE%BF%E9%97%AE/" rel="tag">直接存储器访问</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" rel="tag">结构体</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" rel="tag">编程入门</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" rel="tag">编程笔记</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE/" rel="tag">通信协议</a></li></ul>
     </div>
   </div>
 
@@ -1125,7 +1135,7 @@ NVIC_ISER0 |= (1 &lt;&lt; 6); // EXTI0中断对应第6位
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/C%E8%AF%AD%E8%A8%80/" style="font-size: 16.67px;">C语言</a> <a href="/tags/EXTI/" style="font-size: 11.67px;">EXTI</a> <a href="/tags/F407/" style="font-size: 18.33px;">F407</a> <a href="/tags/GPIO/" style="font-size: 15px;">GPIO</a> <a href="/tags/HSE/" style="font-size: 10px;">HSE</a> <a href="/tags/HSI/" style="font-size: 10px;">HSI</a> <a href="/tags/MCO/" style="font-size: 11.67px;">MCO</a> <a href="/tags/NVIC/" style="font-size: 11.67px;">NVIC</a> <a href="/tags/RCC/" style="font-size: 11.67px;">RCC</a> <a href="/tags/STM32/" style="font-size: 20px;">STM32</a> <a href="/tags/USART/" style="font-size: 13.33px;">USART</a> <a href="/tags/scanf/" style="font-size: 10px;">scanf</a> <a href="/tags/systick/" style="font-size: 10px;">systick</a> <a href="/tags/typedef/" style="font-size: 10px;">typedef</a> <a href="/tags/%E4%B8%B2%E5%8F%A3/" style="font-size: 13.33px;">串口</a> <a href="/tags/%E4%B8%B2%E5%8F%A3%E4%B8%AD%E6%96%AD/" style="font-size: 10px;">串口中断</a> <a href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">位运算与位运算符</a> <a href="/tags/%E5%86%85%E6%A0%B8%E5%AE%9A%E6%97%B6%E5%99%A8/" style="font-size: 10px;">内核定时器</a> <a href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" style="font-size: 10px;">原码·反码·补码</a> <a href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">复合赋值运算符</a> <a href="/tags/%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD/" style="font-size: 10px;">外部中断</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 13.33px;">寄存器</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" style="font-size: 10px;">寄存器编程</a> <a href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/" style="font-size: 11.67px;">嵌入式</a> <a href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 10px;">嵌入式寄存器</a> <a href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" style="font-size: 15px;">库函数</a> <a href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" style="font-size: 10px;">按键输入</a> <a href="/tags/%E6%97%B6%E9%92%9F/" style="font-size: 11.67px;">时钟</a> <a href="/tags/%E6%A1%86%E5%9B%BE%E5%88%86%E6%9E%90/" style="font-size: 10px;">框图分析</a> <a href="/tags/%E6%AF%AB%E7%A7%92%E5%BB%B6%E6%97%B6/" style="font-size: 10px;">毫秒延时</a> <a href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" style="font-size: 10px;">结构体</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" style="font-size: 11.67px;">编程入门</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" style="font-size: 11.67px;">编程笔记</a> <a href="/tags/%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE/" style="font-size: 11.67px;">通信协议</a>
+      <a href="/tags/C%E8%AF%AD%E8%A8%80/" style="font-size: 16.67px;">C语言</a> <a href="/tags/DMA/" style="font-size: 11.67px;">DMA</a> <a href="/tags/EXTI/" style="font-size: 11.67px;">EXTI</a> <a href="/tags/F407/" style="font-size: 18.33px;">F407</a> <a href="/tags/GPIO/" style="font-size: 15px;">GPIO</a> <a href="/tags/HSE/" style="font-size: 10px;">HSE</a> <a href="/tags/HSI/" style="font-size: 10px;">HSI</a> <a href="/tags/M-M/" style="font-size: 10px;">M-M</a> <a href="/tags/M-P/" style="font-size: 10px;">M-P</a> <a href="/tags/MCO/" style="font-size: 11.67px;">MCO</a> <a href="/tags/NVIC/" style="font-size: 11.67px;">NVIC</a> <a href="/tags/RCC/" style="font-size: 11.67px;">RCC</a> <a href="/tags/STM32/" style="font-size: 20px;">STM32</a> <a href="/tags/USART/" style="font-size: 13.33px;">USART</a> <a href="/tags/scanf/" style="font-size: 10px;">scanf</a> <a href="/tags/systick/" style="font-size: 10px;">systick</a> <a href="/tags/typedef/" style="font-size: 10px;">typedef</a> <a href="/tags/%E4%B8%B2%E5%8F%A3/" style="font-size: 13.33px;">串口</a> <a href="/tags/%E4%B8%B2%E5%8F%A3%E4%B8%AD%E6%96%AD/" style="font-size: 10px;">串口中断</a> <a href="/tags/%E4%BD%8D%E8%BF%90%E7%AE%97%E4%B8%8E%E4%BD%8D%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">位运算与位运算符</a> <a href="/tags/%E5%86%85%E6%A0%B8%E5%AE%9A%E6%97%B6%E5%99%A8/" style="font-size: 10px;">内核定时器</a> <a href="/tags/%E5%8E%9F%E7%A0%81%C2%B7%E5%8F%8D%E7%A0%81%C2%B7%E8%A1%A5%E7%A0%81/" style="font-size: 10px;">原码·反码·补码</a> <a href="/tags/%E5%A4%8D%E5%90%88%E8%B5%8B%E5%80%BC%E8%BF%90%E7%AE%97%E7%AC%A6/" style="font-size: 10px;">复合赋值运算符</a> <a href="/tags/%E5%A4%96%E9%83%A8%E4%B8%AD%E6%96%AD/" style="font-size: 10px;">外部中断</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 13.33px;">寄存器</a> <a href="/tags/%E5%AF%84%E5%AD%98%E5%99%A8%E7%BC%96%E7%A8%8B/" style="font-size: 10px;">寄存器编程</a> <a href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/" style="font-size: 11.67px;">嵌入式</a> <a href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%AF%84%E5%AD%98%E5%99%A8/" style="font-size: 10px;">嵌入式寄存器</a> <a href="/tags/%E5%BA%93%E5%87%BD%E6%95%B0/" style="font-size: 15px;">库函数</a> <a href="/tags/%E6%8C%89%E9%94%AE%E8%BE%93%E5%85%A5/" style="font-size: 10px;">按键输入</a> <a href="/tags/%E6%97%B6%E9%92%9F/" style="font-size: 11.67px;">时钟</a> <a href="/tags/%E6%A1%86%E5%9B%BE%E5%88%86%E6%9E%90/" style="font-size: 10px;">框图分析</a> <a href="/tags/%E6%AF%AB%E7%A7%92%E5%BB%B6%E6%97%B6/" style="font-size: 10px;">毫秒延时</a> <a href="/tags/%E7%9B%B4%E6%8E%A5%E5%AD%98%E5%82%A8%E5%99%A8%E8%AE%BF%E9%97%AE/" style="font-size: 11.67px;">直接存储器访问</a> <a href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/" style="font-size: 10px;">结构体</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E5%85%A5%E9%97%A8/" style="font-size: 11.67px;">编程入门</a> <a href="/tags/%E7%BC%96%E7%A8%8B%E7%AC%94%E8%AE%B0/" style="font-size: 11.67px;">编程笔记</a> <a href="/tags/%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE/" style="font-size: 11.67px;">通信协议</a>
     </div>
   </div>
 
@@ -1147,6 +1157,14 @@ NVIC_ISER0 |= (1 &lt;&lt; 6); // EXTI0中断对应第6位
       <ul>
         
           <li>
+            <a href="/2026/08/03/%E9%85%8D%E7%BD%AEDMA%E7%94%B1M-M%E5%92%8CM-P%E7%9A%84%E4%BB%A3%E7%A0%81%E6%80%BB%E7%BB%93/">配置DMA由M-M和M-P的代码总结</a>
+          </li>
+        
+          <li>
+            <a href="/2026/08/03/DMA%E7%9F%A5%E8%AF%86%E6%80%BB%E7%BB%93/">DMA知识总结</a>
+          </li>
+        
+          <li>
             <a href="/2026/08/02/USART%E4%B8%B2%E5%8F%A3%E5%AE%9E%E9%AA%8C%E6%80%BB%E7%BB%93/">USART串口实验总结</a>
           </li>
         
@@ -1156,14 +1174,6 @@ NVIC_ISER0 |= (1 &lt;&lt; 6); // EXTI0中断对应第6位
         
           <li>
             <a href="/2026/08/01/USART%E4%B8%B2%E5%8F%A3%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE%E7%AE%80%E4%BB%8B%E6%80%BB%E7%BB%93/">USART串口通信协议简介总结</a>
-          </li>
-        
-          <li>
-            <a href="/2026/08/01/%E9%80%9A%E8%AE%AF%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/">通讯的基本概念</a>
-          </li>
-        
-          <li>
-            <a href="/2026/07/30/%E7%B3%BB%E7%BB%9F%E6%BB%B4%E7%AD%94%E5%AE%9A%E6%97%B6%E5%99%A8%E6%93%8D%E4%BD%9C%E6%80%BB%E7%BB%93/">systick系统滴答定时器操作总结</a>
           </li>
         
       </ul>
