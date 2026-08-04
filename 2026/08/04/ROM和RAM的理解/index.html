@@ -4,14 +4,22 @@
   <meta charset="utf-8">
   
   
-  <title>Archives: 2026/8 | Hexo</title>
+  <title>ROM的理解 | Hexo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Hexo">
-<meta property="og:url" content="http://example.com/archives/2026/08/index.html">
+  <meta name="description" content="RAM 与 ROM总核心区分ROM：断电数据不丢失，只读为主RAM：断电全部清空，可读可写在STM32里：• ROM &#x3D; FLASH（闪存）• RAM &#x3D; SRAM（静态内存）一、ROM（Read-Only Memory 只读存储器）1、核心特性  断电数据永久保存 原生定义：只能读取，不能随意改写；现代FLASH属于新型ROM，可以擦除再写入，但不能像内存一样随时随机改写 读">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ROM的理解">
+<meta property="og:url" content="http://example.com/2026/08/04/ROM%E5%92%8CRAM%E7%9A%84%E7%90%86%E8%A7%A3/index.html">
 <meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="RAM 与 ROM总核心区分ROM：断电数据不丢失，只读为主RAM：断电全部清空，可读可写在STM32里：• ROM &#x3D; FLASH（闪存）• RAM &#x3D; SRAM（静态内存）一、ROM（Read-Only Memory 只读存储器）1、核心特性  断电数据永久保存 原生定义：只能读取，不能随意改写；现代FLASH属于新型ROM，可以擦除再写入，但不能像内存一样随时随机改写 读">
 <meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2026-08-04T10:54:13.000Z">
+<meta property="article:modified_time" content="2026-08-04T10:58:44.729Z">
 <meta property="article:author" content="John Doe">
+<meta property="article:tag" content="F407">
+<meta property="article:tag" content="RAM">
+<meta property="article:tag" content="ROM">
+<meta property="article:tag" content="STM32">
 <meta name="twitter:card" content="summary">
   
     <link rel="alternate" href="/atom.xml" title="Hexo" type="application/atom+xml">
@@ -69,153 +77,88 @@
 </header>
 
       <div class="outer">
-        <section id="main">
-  
-  
-    
-    
-      
-      
-      <section class="archives-wrap">
-        <div class="archive-year-wrap">
-          <a href="/archives/2026" class="archive-year">2026</a>
-        </div>
-        <div class="archives">
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2026/08/04/ROM%E5%92%8CRAM%E7%9A%84%E7%90%86%E8%A7%A3/" class="archive-article-date">
-  <time class="dt-published" datetime="2026-08-04T10:54:13.000Z" itemprop="datePublished">Aug 4</time>
+        <section id="main"><article id="post-ROM和RAM的理解" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2026/08/04/ROM%E5%92%8CRAM%E7%9A%84%E7%90%86%E8%A7%A3/" class="article-date">
+  <time class="dt-published" datetime="2026-08-04T10:54:13.000Z" itemprop="datePublished">2026-08-04</time>
 </a>
-      
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/">嵌入式单片机学习</a>►<a class="article-category-link" href="/categories/%E5%B5%8C%E5%85%A5%E5%BC%8F%E5%8D%95%E7%89%87%E6%9C%BA%E5%AD%A6%E4%B9%A0/%E8%AF%BE%E7%A8%8B%E6%80%BB%E7%BB%93/">课程总结</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
   
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2026/08/04/ROM%E5%92%8CRAM%E7%9A%84%E7%90%86%E8%A7%A3/">ROM的理解</a>
+    <h1 class="p-name article-title" itemprop="headline name">
+      ROM的理解
     </h1>
   
 
-    </header>
-  </div>
-</article>
-  
+      </header>
     
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2026/08/03/%E9%85%8D%E7%BD%AEDMA%E7%94%B1M-M%E5%92%8CM-P%E7%9A%84%E4%BB%A3%E7%A0%81%E6%80%BB%E7%BB%93/" class="archive-article-date">
-  <time class="dt-published" datetime="2026-08-03T09:17:04.000Z" itemprop="datePublished">Aug 3</time>
-</a>
+    <div class="e-content article-entry" itemprop="articleBody">
       
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2026/08/03/%E9%85%8D%E7%BD%AEDMA%E7%94%B1M-M%E5%92%8CM-P%E7%9A%84%E4%BB%A3%E7%A0%81%E6%80%BB%E7%BB%93/">配置DMA由M-M和M-P的代码总结</a>
-    </h1>
-  
+        <p>RAM 与 ROM<br>总核心区分<br>ROM：断电数据不丢失，只读为主<br>RAM：断电全部清空，可读可写<br>在STM32里：<br>• ROM &#x3D; FLASH（闪存）<br>• RAM &#x3D; SRAM（静态内存）<br>一、ROM（Read-Only Memory 只读存储器）<br>1、核心特性</p>
+<ol>
+<li>断电数据永久保存</li>
+<li>原生定义：只能读取，不能随意改写；现代FLASH属于新型ROM，可以擦除再写入，但不能像内存一样随时随机改写</li>
+<li>读取速度中等，写入&#x2F;擦除速度很慢</li>
+<li>按块（扇区）擦除，无法单独修改1个字节<br>2、STM32中对应的硬件：片内FLASH<br>3、存放什么数据（重点，写代码天天接触）</li>
+<li>程序代码（.text段）<br>你编译生成的程序，烧录到FLASH里。上电后CPU从FLASH读取指令运行</li>
+<li>常量 const 修饰数据（.rodata）<br>const uint8_t str[] &#x3D; “hello”; &#x2F;&#x2F; 存在FLASH(ROM)<br>不加const的全局数组默认放到RAM</li>
+<li>中断向量表<br>4、局限<br>优势：断电保存程序，上电不用重新下载<br>缺点：<br>• 不能实时频繁写入；<br>• 改写前必须整页擦除；<br>• 运行时不适合用来临时缓存变量<br>5、生活类比<br>书本（ROM）<br>内容印刷好永久保存；你可以看书上文字（读），想要修改文字需要擦掉一整页重写，不能随手涂改单个字</li>
+</ol>
+<p>二、RAM（Random Access Memory 随机存取存储器）<br>1、核心特性</p>
+<ol>
+<li>断电瞬间所有数据全部消失</li>
+<li>任意地址随时读、随时写，单字节自由修改，不需要擦除</li>
+<li>读写速度远快于FLASH</li>
+<li>只有芯片上电运行时才有效<br>2、STM32对应的硬件：SRAM（静态随机存储器）<br>3、存放哪些变量（C语言分区重点）</li>
+<li>全局变量、静态局部变量(.data&#x2F;.bss)<br>uint8_t buf[100]; &#x2F;&#x2F;全局数组 → SRAM<br>static int a;</li>
+<li>函数内部局部变量（栈Stack）<br>void test(void){<br> int temp; &#x2F;&#x2F;栈内存，属于RAM<br>}</li>
+<li>动态内存分配 堆Heap（malloc）</li>
+<li>DMA搬运、串口接收缓存、临时运算缓冲区<br>4、局限<br>优势：读写极快，程序运行临时数据首选<br>缺点：断电丢失；容量通常比FLASH小很多；一旦内存溢出程序死机<br>生活类比<br>草稿纸（RAM）<br>写演算、临时数据随便涂改；一旦拿走电源（草稿纸撕碎），上面内容全部消失</li>
+</ol>
+<p>三、表格直观对比<br>对比项目 ROM(STM32 FLASH) RAM(STM32 SRAM)<br>断电 数据保留 数据全部丢失<br>读写特性 可读；写入需要先擦除整页 随时随机读写，单字节修改<br>速度 读取较快，写入慢 高速读写<br>存放内容 程序代码、const常量 全局变量、局部变量、运行缓存<br>用途 长期存储固件、固定参数 程序运行临时数据交换<br>地址访问 上电持续读取，不适合频繁改写 程序运行全程频繁交互 </p>
+<p>四、结合最近学的DMA知识点串联（重中之重）<br>M2M：FLASH(ROM) → SRAM(RAM)<br>FLASH属于ROM，不能直接实时修改<br>如果你想运算一段常量数组，不能直接在FLASH运算<br>标准流程：DMA把FLASH里常量拷贝到SRAM，CPU在RAM里面修改、运算<br>M2P：SRAM(RAM) → USART外设<br>串口发送缓冲区必须放在RAM；DMA从SRAM取出数据送往串口<br>高频易错</p>
+<ol>
+<li>const数组放FLASH（ROM），不占用RAM；大量大数组建议加const节省内存</li>
+<li>绝对不要在中断里往FLASH频繁写数据，擦写耗时会导致系统卡死</li>
+<li>RAM空间有限，定义超大局部数组容易栈溢出死机<br>五、拓展</li>
+<li>硬盘&#x2F;U盘 &#x3D; 类似ROM（持久存储）</li>
+<li>电脑内存条 &#x3D; RAM（断电清空）<br>电脑流程类比单片机：<br>系统文件存硬盘(ROM) → 开机加载到内存条(RAM) → CPU运行<br>STM32流程：<br>程序存FLASH(ROM) → 上电运行，变量在SRAM(RAM)</li>
+</ol>
 
-    </header>
-  </div>
-</article>
-  
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2026/08/03/DMA%E7%9F%A5%E8%AF%86%E6%80%BB%E7%BB%93/" class="archive-article-date">
-  <time class="dt-published" datetime="2026-08-03T09:07:47.000Z" itemprop="datePublished">Aug 3</time>
-</a>
       
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2026/08/03/DMA%E7%9F%A5%E8%AF%86%E6%80%BB%E7%BB%93/">DMA知识总结</a>
-    </h1>
-  
-
-    </header>
-  </div>
-</article>
-  
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2026/08/02/USART%E4%B8%B2%E5%8F%A3%E5%AE%9E%E9%AA%8C%E6%80%BB%E7%BB%93/" class="archive-article-date">
-  <time class="dt-published" datetime="2026-08-02T10:19:24.000Z" itemprop="datePublished">Aug 2</time>
-</a>
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://example.com/2026/08/04/ROM%E5%92%8CRAM%E7%9A%84%E7%90%86%E8%A7%A3/" data-id="cuidZob1u9xpfzJs6wOjDSTFK" data-title="ROM的理解" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2026/08/02/USART%E4%B8%B2%E5%8F%A3%E5%AE%9E%E9%AA%8C%E6%80%BB%E7%BB%93/">USART串口实验总结</a>
-    </h1>
-  
-
-    </header>
-  </div>
-</article>
-  
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2026/08/01/USART%E4%B8%B2%E5%8F%A3%E5%8A%9F%E8%83%BD%E6%A1%86%E5%9B%BE%E6%80%BB%E7%BB%93/" class="archive-article-date">
-  <time class="dt-published" datetime="2026-08-01T12:26:57.000Z" itemprop="datePublished">Aug 1</time>
-</a>
       
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2026/08/01/USART%E4%B8%B2%E5%8F%A3%E5%8A%9F%E8%83%BD%E6%A1%86%E5%9B%BE%E6%80%BB%E7%BB%93/">USART串口功能框图总结</a>
-    </h1>
-  
-
-    </header>
-  </div>
-</article>
-  
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2026/08/01/USART%E4%B8%B2%E5%8F%A3%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE%E7%AE%80%E4%BB%8B%E6%80%BB%E7%BB%93/" class="archive-article-date">
-  <time class="dt-published" datetime="2026-08-01T12:03:35.000Z" itemprop="datePublished">Aug 1</time>
-</a>
       
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2026/08/01/USART%E4%B8%B2%E5%8F%A3%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE%E7%AE%80%E4%BB%8B%E6%80%BB%E7%BB%93/">USART串口通信协议简介总结</a>
-    </h1>
-  
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/F407/" rel="tag">F407</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/RAM/" rel="tag">RAM</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/ROM/" rel="tag">ROM</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/STM32/" rel="tag">STM32</a></li></ul>
 
-    </header>
+    </footer>
   </div>
-</article>
   
     
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2026/08/01/%E9%80%9A%E8%AE%AF%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" class="archive-article-date">
-  <time class="dt-published" datetime="2026-08-01T11:38:38.000Z" itemprop="datePublished">Aug 1</time>
-</a>
-      
+<nav id="article-nav">
   
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2026/08/01/%E9%80%9A%E8%AE%AF%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/">通讯的基本概念</a>
-    </h1>
   
+    <a href="/2026/08/03/%E9%85%8D%E7%BD%AEDMA%E7%94%B1M-M%E5%92%8CM-P%E7%9A%84%E4%BB%A3%E7%A0%81%E6%80%BB%E7%BB%93/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">配置DMA由M-M和M-P的代码总结</div>
+    </a>
+  
+</nav>
 
-    </header>
-  </div>
+  
 </article>
-  
-  
-    </div></section>
-  
 
 
 </section>
